@@ -43,10 +43,12 @@ ARGON_SECRET_KEY="..."
 
 See [dotenv](https://github.com/dotenv-rs/dotenv) for more.
 
-After that's done:
+Finally, you'll need [pg_tmp](https://github.com/eradman/ephemeralpg) installed and available for unit tests to be able to run.
+
+After all of this is done:
 
 * `cargo run` to run the webserver
-* `cargo test` to run tests
+* `cargo test -- --test-threads 1` to run tests (tests must be run sequentially due to usage of pg_tmp)
 
 ## Tips for Rust development
 
