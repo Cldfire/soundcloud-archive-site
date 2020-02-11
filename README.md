@@ -1,6 +1,6 @@
 # soundcloud-archive-site
 
-A website that provides a simple interface to store an archive of your SoundCloud user data, allowing you both to browse / retrieve the data and to view various statistics.
+A website that provides a simple interface to store an archive of your [SoundCloud](https://soundcloud.com) user data, allowing you both to browse / retrieve the data and to view various statistics.
 
 ## Frontend (by Ian)
 
