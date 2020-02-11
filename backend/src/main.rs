@@ -394,4 +394,37 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn cannot_create_with_same_username() -> Result<(), Error> {
+        let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+
+        let rinfo = RegisterInfo {
+            username: "testusername".into(),
+            password: "testpass".into()
+        };
+
+        let rinfo2 = RegisterInfo {
+            username: "testusername".into(),
+            password: "testpass2".into()
+        };
+
+        // Register first user
+        let response = client
+            .post("/api/register")
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&rinfo).unwrap())
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
+
+        // Attempt to register second
+        let response = client
+            .post("/api/register")
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&rinfo2).unwrap())
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::ServerError);
+
+        Ok(())
+    }
 }
