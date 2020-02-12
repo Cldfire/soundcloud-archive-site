@@ -266,8 +266,6 @@ fn auth_creds(auth_creds: Json<AuthCredentials>) -> Result<(), Error> {
 
 /// Create a Rocket instance given a PostgreSQL client.
 fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
-    dotenv().ok();
-
     Ok(
         rocket::ignite()
             .manage(Mutex::new(client))
@@ -308,6 +306,8 @@ fn create_tables(client: &mut Client) -> Result<(), Error> {
 }
 
 fn main() -> Result<(), Error> {
+    dotenv().ok();
+
     // Rocket pretty prints the error on drop if one occurs
     let _ = rocket(postgresql_client()?)?.launch();
 
