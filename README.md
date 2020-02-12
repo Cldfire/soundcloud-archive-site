@@ -8,7 +8,9 @@ TODO: Ian will put relevant info here as he builds the frontend
 
 (Temporary info): The frontend should go in the `frontend` folder. Feel free to use whatever you want.
 
-If you decide to use a Rust framework that compiles to WASM, I've split the struct definitions for the JSON that will be used to communicate between the client and the server out into the library portion of the crate (`backend/src/lib.rs`). You can depend on it and `serde` / `serde_json` to quickly and easily deserialize the JSON into typed structs.
+If you decide to use a Rust framework that compiles to WASM, I've split the struct definitions for the JSON that will be used to communicate between the client and the server out into a separate crate (`json-structs`). You can depend on it and `serde_json` to quickly and easily deserialize the JSON into typed structs.
+
+If you do decide to go this route, make sure you create a new Rust crate for the `frontend` and add it to the workspace (see the `Cargo.toml` at the root).
 
 If not, just work with the JSON however you would normally.
 

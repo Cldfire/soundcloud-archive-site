@@ -3,7 +3,7 @@
 
 use rocket_contrib::{json::Json, serve::StaticFiles};
 use rocket::{request::{self, FromRequest}, response::{status, NamedFile}, Request, State, Outcome, http::{Cookie, Status, Cookies}};
-use scas_json::*;
+use json_structs::*;
 use dotenv::dotenv;
 use postgres::{Client, NoTls};
 use argonautica::{Hasher, Verifier};
@@ -316,16 +316,18 @@ fn main() -> Result<(), Error> {
 
 #[cfg(test)]
 mod test {
-    use scas_json::AuthCredentials;
+    use json_structs::{AuthCredentials, RegisterInfo, UserInfo};
     use rocket::local::Client as HttpClient;
     use postgres::{Client, NoTls};
     use crate::{rocket, Error};
     use crate::create_tables;
     use rocket::http::{Status, StatusClass, ContentType};
-    use scas_json::{RegisterInfo, UserInfo};
     use std::process::Command;
+    use dotenv::dotenv;
 
     fn test_client() -> Result<Client, Error> {
+        dotenv().ok();
+
         let output = Command::new("pg_tmp").arg("-t").output().unwrap();
         let mut client = Client::connect(&String::from_utf8(output.stdout).unwrap(), NoTls)?;
         create_tables(&mut client)?;
