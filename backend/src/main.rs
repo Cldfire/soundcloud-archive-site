@@ -133,7 +133,6 @@ impl User {
     /// Errors if the user cannot be created.
     fn create_new(client: &mut Client, rinfo: &RegisterInfo, key: &str) -> Result<i32, Error> {
         if User::exists(client, &rinfo.username)? {
-            dbg!();
             return Err(Error::UserAlreadyExists);
         }
 
@@ -261,7 +260,7 @@ fn not_found() -> NamedFile {
 /// Route used to provide auth credentials (OAuth token and Client ID).
 #[post("/auth-creds", format = "json", data = "<auth_creds>")]
 fn auth_creds(auth_creds: Json<AuthCredentials>) -> Result<(), Error> {
-    dbg!(auth_creds);
+    // TODO: this
     Ok(())
 }
 
