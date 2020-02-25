@@ -105,11 +105,11 @@ impl User {
     fn create_table(client: &mut Client) -> Result<(), Error> {
         Ok(client.execute(
             "CREATE TABLE IF NOT EXISTS users (
-                        user_id       SERIAL PRIMARY KEY,
-                        username      TEXT NOT NULL,
-                        hash          TEXT NOT NULL
-                    )",
-                    &[]
+                user_id       SERIAL PRIMARY KEY,
+                username      TEXT NOT NULL,
+                hash          TEXT NOT NULL
+            )",
+            &[]
         ).map(|_| ())?)
     }
 
@@ -154,7 +154,7 @@ impl User {
     fn load_id(client: &mut Client, id: i32) -> Result<Self, Error> {
         let row = client.query_one("SELECT user_id, hash, username FROM users WHERE user_id = $1", &[&id])?;
 
-        Ok(User {
+        Ok(Self {
             user_id: row.get(0),
             hash: row.get(1),
             username: row.get(2)
@@ -165,7 +165,7 @@ impl User {
     fn load_username(client: &mut Client, username: &str) -> Result<Self, Error> {
         let row = client.query_one("SELECT user_id, hash, username FROM users WHERE username = $1", &[&username])?;
 
-        Ok(User {
+        Ok(Self {
             user_id: row.get(0),
             hash: row.get(1),
             username: row.get(2)
@@ -188,6 +188,285 @@ impl User {
                 .with_secret_key(key)
                 .verify()?
         )
+    }
+}
+/// Representation of a track in the database.
+#[derive(Debug, PartialEq)]
+struct Track {
+    /// A unique numeric id for the track
+    track_id: i64,
+    /// The id of the SoundCloud user that uploaded this track
+    sc_user_id: i64,
+    /// The length of the track in milliseconds
+    length_ms: i64,
+    /// When the track was uploaded to SoundCloud as a date-time string
+    created_at: String,
+    /// The name of the track
+    title: String,
+    /// A description of the track written by the user who posted it
+    description: String,
+    /// The number of times the track was liked on SoundCloud
+    likes_count: i64,
+    /// The number of times the track was played on SoundCloud
+    playback_count: i64,
+    /// A URL to the track's album art
+    artwork_url: String,
+    /// A URL to the track on SoundCloud
+    permalink_url: String,
+    /// A URL via which the audio data for this track can be downloaded on the backend.
+    ///
+    /// This may not exist for every track.
+    download_url: Option<String>
+}
+
+impl Track {
+    /// Creates a table in the given database for storing this struct.
+    ///
+    /// The table will only be created if it does not already exist.
+    fn create_table(client: &mut Client) -> Result<(), Error> {
+        Ok(client.execute(
+            "CREATE TABLE IF NOT EXISTS tracks (
+                track_id        BIGINT PRIMARY KEY,
+                sc_user_id      BIGINT NOT NULL references soundcloudusers(sc_user_id),
+                length_ms       BIGINT NOT NULL,
+                created_at      TEXT NOT NULL,
+                title           TEXT NOT NULL,
+                description     TEXT NOT NULL,
+                likes_count     BIGINT NOT NULL,
+                playback_count  BIGINT NOT NULL,
+                artwork_url     TEXT NOT NULL,
+                permalink_url   TEXT NOT NULL,
+                download_url    TEXT
+            )",
+            &[]
+        ).map(|_| ())?)
+    }
+
+    /// Creates a new track in the database based on an instance of the struct.
+    fn create_new(&self, client: &mut Client) -> Result<(), Error> {
+        Ok(client.execute(
+            "INSERT INTO tracks VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+            &[
+                &self.track_id,
+                &self.sc_user_id,
+                &self.length_ms,
+                &self.created_at,
+                &self.title,
+                &self.description,
+                &self.likes_count,
+                &self.playback_count,
+                &self.artwork_url,
+                &self.permalink_url,
+                &self.download_url
+            ],
+        ).map(|_| ())?)
+    }
+
+    /// Loads the track specified by the given id from the database
+    fn load_id(client: &mut Client, track_id: i64) -> Result<Self, Error> {
+        let row = client.query_one("
+            SELECT
+                track_id,
+                sc_user_id,
+                length_ms,
+                created_at,
+                title,
+                description,
+                likes_count,
+                playback_count,
+                artwork_url,
+                permalink_url,
+                download_url
+            FROM tracks
+            WHERE track_id = $1",
+            &[&track_id]
+        )?;
+
+        Ok(Self {
+            track_id: row.get(0),
+            sc_user_id: row.get(1),
+            length_ms: row.get(2),
+            created_at: row.get(3),
+            title: row.get(4),
+            description: row.get(5),
+            likes_count: row.get(6),
+            playback_count: row.get(7),
+            artwork_url: row.get(8),
+            permalink_url: row.get(9),
+            download_url: row.get(10)
+        })
+    }
+}
+
+/// Representation of a SoundCloud user in the database
+#[derive(Debug, PartialEq)]
+struct SoundCloudUser {
+    /// The id of the SoundCloud user
+    sc_user_id: i64,
+    /// A URL to the user's profile image on SoundCloud
+    avatar_url: String,
+    /// The user's full name
+    full_name: String,
+    /// The user's display name
+    username: String,
+    /// A URL to the user on SoundCloud
+    permalink_url: String
+}
+
+impl SoundCloudUser {
+    /// Creates a table in the given database for storing this struct.
+    ///
+    /// The table will only be created if it does not already exist.
+    fn create_table(client: &mut Client) -> Result<(), Error> {
+        Ok(client.execute(
+            "CREATE TABLE IF NOT EXISTS soundcloudusers (
+                sc_user_id      BIGINT PRIMARY KEY,
+                avatar_url      TEXT NOT NULL,
+                full_name       TEXT NOT NULL,
+                username        TEXT NOT NULL,
+                permalink_url   TEXT NOT NULL
+            )",
+            &[]
+        ).map(|_| ())?)
+    }
+
+    /// Creates a new SoundCloud user in the database based on an instance of
+    /// the struct.
+    fn create_new(&self, client: &mut Client) -> Result<(), Error> {
+        Ok(client.execute(
+            "INSERT INTO soundcloudusers VALUES ($1, $2, $3, $4, $5)",
+            &[
+                &self.sc_user_id,
+                &self.avatar_url,
+                &self.full_name,
+                &self.username,
+                &self.permalink_url
+            ],
+        ).map(|_| ())?)
+    }
+
+    /// Loads the user specified by the given id from the database
+    fn load_id(client: &mut Client, sc_user_id: i64) -> Result<Self, Error> {
+        let row = client.query_one("
+            SELECT
+                sc_user_id,
+                avatar_url,
+                full_name,
+                username,
+                permalink_url
+            FROM soundcloudusers
+            WHERE sc_user_id = $1",
+            &[&sc_user_id]
+        )?;
+
+        Ok(Self {
+            sc_user_id: row.get(0),
+            avatar_url: row.get(1),
+            full_name: row.get(2),
+            username: row.get(3),
+            permalink_url: row.get(4)
+        })
+    }
+}
+
+/// Representation of a playlist in the database.
+#[derive(Debug, PartialEq)]
+struct Playlist {
+    /// A unique numeric id for the playlist
+    playlist_id: i64,
+    /// The id of the soundcloud user that created this playlist
+    sc_user_id: i64,
+    /// IDs of tracks that are a part of this playlist
+    track_ids: Vec<i64>,
+    /// The total length of all tracks in the playlist combined in milliseconds
+    length_ms: i64,
+    /// When the playlist was created on SoundCloud as a date-time string
+    created_at: String,
+    /// The name of the playlist
+    title: String,
+    /// A URL to the playlist on SoundCloud
+    permalink_url: String,
+    /// The playlist's description
+    description: String,
+    /// The number of times the playlist was liked on SoundCloud
+    likes_count: i64,
+    /// Whether or not this playlist is an album
+    is_album: bool
+}
+
+impl Playlist {
+    /// Creates a table in the given database for storing this struct.
+    ///
+    /// The table will only be created if it does not already exist.
+    fn create_table(client: &mut Client) -> Result<(), Error> {
+        Ok(client.execute(
+            "CREATE TABLE IF NOT EXISTS playlists (
+                playlist_id     BIGINT PRIMARY KEY,
+                sc_user_id      BIGINT NOT NULL references soundcloudusers(sc_user_id),
+                track_ids       BIGINT[] NOT NULL,
+                length_ms       BIGINT NOT NULL,
+                created_at      TEXT NOT NULL,
+                title           TEXT NOT NULL,
+                permalink_url   TEXT NOT NULL,
+                description     TEXT NOT NULL,
+                likes_count     BIGINT NOT NULL,
+                is_album        BOOLEAN NOT NULL
+            )",
+            &[]
+        ).map(|_| ())?)
+    }
+
+    /// Creates a new SoundCloud user in the database based on an instance of
+    /// the struct.
+    fn create_new(&self, client: &mut Client) -> Result<(), Error> {
+        Ok(client.execute(
+            "INSERT INTO playlists VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            &[
+                &self.playlist_id,
+                &self.sc_user_id,
+                &self.track_ids,
+                &self.length_ms,
+                &self.created_at,
+                &self.title,
+                &self.permalink_url,
+                &self.description,
+                &self.likes_count,
+                &self.is_album
+            ],
+        ).map(|_| ())?)
+    }
+
+    /// Loads the playlist specified by the given id from the database
+    fn load_id(client: &mut Client, playlist_id: i64) -> Result<Self, Error> {
+        let row = client.query_one("
+            SELECT
+                playlist_id,
+                sc_user_id,
+                track_ids,
+                length_ms,
+                created_at,
+                title,
+                permalink_url,
+                description,
+                likes_count,
+                is_album
+            FROM playlists
+            WHERE playlist_id = $1",
+            &[&playlist_id]
+        )?;
+
+        Ok(Self {
+            playlist_id: row.get(0),
+            sc_user_id: row.get(1),
+            track_ids: row.get(2),
+            length_ms: row.get(3),
+            created_at: row.get(4),
+            title: row.get(5),
+            permalink_url: row.get(6),
+            description: row.get(7),
+            likes_count: row.get(8),
+            is_album: row.get(9)
+        })
     }
 }
 
@@ -247,6 +526,16 @@ fn me() -> status::Custom<()> {
     status::Custom(Status::Unauthorized, ())
 }
 
+#[get("/<_whatever..>", rank = 20)]
+fn not_logged_in_get(_whatever: std::path::PathBuf) -> status::Custom<()> {
+    status::Custom(Status::Unauthorized, ())
+}
+
+#[post("/<_whatever..>", rank = 20)]
+fn not_logged_in_post(_whatever: std::path::PathBuf) -> status::Custom<()> {
+    status::Custom(Status::Unauthorized, ())
+}
+
 /// A "catch-all" to redirect path requests to the index since we are building a SPA
 // TODO: if you need requests to be directed at a different file, change this accordingly
 #[catch(404)]
@@ -258,8 +547,10 @@ fn not_found() -> NamedFile {
 }
 
 /// Route used to provide auth credentials (OAuth token and Client ID).
+///
+/// You have to be logged in with an account to access this route.
 #[post("/auth-creds", format = "json", data = "<auth_creds>")]
-fn auth_creds(auth_creds: Json<AuthCredentials>) -> Result<(), Error> {
+fn auth_creds(user: User, auth_creds: Json<AuthCredentials>) -> Result<(), Error> {
     // TODO: this
     Ok(())
 }
@@ -279,7 +570,9 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
                 login,
                 logout,
                 me,
-                me_authed
+                me_authed,
+                not_logged_in_get,
+                not_logged_in_post
             ])
             .register(catchers![not_found])
     )
@@ -301,6 +594,9 @@ fn postgresql_client() -> Result<Client, Error> {
 /// Creates any tables required by the backend if they do not exist already.
 fn create_tables(client: &mut Client) -> Result<(), Error> {
     User::create_table(client)?;
+    SoundCloudUser::create_table(client)?;
+    Track::create_table(client)?;
+    Playlist::create_table(client)?;
 
     Ok(())
 }
@@ -324,6 +620,7 @@ mod test {
     use rocket::http::{Status, StatusClass, ContentType};
     use std::process::Command;
     use dotenv::dotenv;
+    use super::*;
 
     fn test_client() -> Result<Client, Error> {
         dotenv().ok();
@@ -336,8 +633,102 @@ mod test {
     }
 
     #[test]
+    fn database_tables() -> Result<(), Error> {
+        let mut db_client = test_client()?;
+        create_tables(&mut db_client)?;
+
+        let track1 = Track {
+            track_id: 847238,
+            sc_user_id: 102832,
+            length_ms: 4039482,
+            created_at: "2019-09-10T16:07:05Z".into(),
+            title: "Database Testing Track".into(),
+            description: "This is a track for testing the database".into(),
+            likes_count: 4838,
+            playback_count: 30248,
+            artwork_url: "https://thislinkisinvalid.com".into(),
+            permalink_url: "https://thislinkisalsoinvalid.com".into(),
+            download_url: Some("https://thetrack/download.mp3".into())
+        };
+    
+        let track2 = Track {
+            track_id: 1028438,
+            sc_user_id: 102832,
+            length_ms: 2294884,
+            created_at: "2019-09-17T06:29:59Z".into(),
+            title: "Sick Banger".into(),
+            description: "Does it need explanation??".into(),
+            likes_count: 53828,
+            playback_count: 9928732,
+            artwork_url: "https://amazingbanger.dev".into(),
+            permalink_url: "https://bangbang.com".into(),
+            download_url: None
+        };
+    
+        let sc_user = SoundCloudUser {
+            sc_user_id: 102832,
+            avatar_url: "https://anotherbadurl.net".into(),
+            full_name: "John Bayer".into(),
+            username: "superdude".into(),
+            permalink_url: "https://ohnoalinkthatdoesntwork.com".into()
+        };
+
+        let playlist = Playlist {
+            playlist_id: 82334,
+            sc_user_id: 102832,
+            track_ids: vec![847238, 1028438],
+            length_ms: 6334366,
+            created_at: "2019-09-17T06:29:59Z".into(),
+            title: "My Killer Tunes".into(),
+            permalink_url: "https://sadfacefakelink.cupcake".into(),
+            description: "This playlist slays dude. Play it in the car".into(),
+            likes_count: 9238,
+            is_album: false
+        };
+
+        sc_user.create_new(&mut db_client)?;
+        track1.create_new(&mut db_client)?;
+        track2.create_new(&mut db_client)?;
+        playlist.create_new(&mut db_client)?;
+
+        let loaded_sc_user = SoundCloudUser::load_id(&mut db_client, sc_user.sc_user_id)?;
+        let loaded_track1 = Track::load_id(&mut db_client, track1.track_id)?;
+        let loaded_track2 = Track::load_id(&mut db_client, track2.track_id)?;
+        let loaded_playlist = Playlist::load_id(&mut db_client, playlist.playlist_id)?;
+
+        assert_eq!(sc_user, loaded_sc_user);
+        assert_eq!(track1, loaded_track1);
+        assert_eq!(track2, loaded_track2);
+        assert_eq!(playlist, loaded_playlist);
+
+        Ok(())
+    }
+
+    #[test]
     fn auth_creds() -> Result<(), Error> {
         let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+
+        let response = client
+            .post("/api/auth-creds")
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&AuthCredentials {
+                oauth_token: "bla".into(),
+                client_id: "bla".into()
+            }).unwrap())
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::ClientError);
+
+        let rinfo = RegisterInfo {
+            username: "testusername".into(),
+            password: "testpass".into()
+        };
+
+        let response = client
+            .post("/api/register")
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&rinfo).unwrap())
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
 
         let response = client
             .post("/api/auth-creds")
