@@ -5,6 +5,8 @@ use argonautica::{Hasher, Verifier};
 
 use super::*;
 
+pub type DbClient = Mutex<Client>;
+
 /// Creates a PostgreSQL client based off of environment variables.
 pub fn postgresql_client() -> Result<Client, Error> {
     let mut client = Client::configure()
@@ -48,6 +50,16 @@ pub struct User {
     ///
     /// This is both their login and their displayname
     pub username: String,
+    /// The OAuth token that this user has provided for us to use to access their
+    /// SoundCloud account
+    pub sc_oauth_token: Option<String>,
+    /// The client id that corresponds to this user's account on SoundCloud
+    pub sc_client_id: Option<String>,
+    /// A vector of ids for tracks that this user has liked on SoundCloud
+    pub liked_track_ids: Vec<i64>,
+    /// A vector of ids for playlists that this user has made or liked on
+    /// SoundCloud
+    pub playlist_ids: Vec<i64>
 }
 
 impl From<User> for UserInfo {
@@ -86,9 +98,13 @@ impl User {
     pub fn create_table(client: &mut Client) -> Result<(), Error> {
         Ok(client.execute(
             "CREATE TABLE IF NOT EXISTS users (
-                user_id       SERIAL PRIMARY KEY,
-                username      TEXT NOT NULL,
-                hash          TEXT NOT NULL
+                user_id             SERIAL PRIMARY KEY,
+                username            TEXT NOT NULL,
+                hash                TEXT NOT NULL,
+                sc_oauth_token      TEXT,
+                sc_client_id        TEXT,
+                liked_track_ids     BIGINT[] NOT NULL,
+                playlist_ids        BIGINT[] NOT NULL
             )",
             &[]
         ).map(|_| ())?)
@@ -124,32 +140,62 @@ impl User {
             .hash()
             .unwrap();
 
+        // Needed to make types work out
+        let empty_vec: Vec<i64> = vec![];
 
         Ok(client.query_one(
-            "INSERT INTO users (hash, username) VALUES ($1, $2) RETURNING user_id",
-            &[&hash, &rinfo.username],
+            "INSERT INTO users (
+                hash, username, liked_track_ids, playlist_ids
+            ) VALUES ($1, $2, $3, $4) RETURNING user_id",
+            &[&hash, &rinfo.username, &empty_vec, &empty_vec],
         )?.get(0))
     }
 
     /// Loads the user specified by the given id from the database
     pub fn load_id(client: &mut Client, id: i32) -> Result<Self, Error> {
-        let row = client.query_one("SELECT user_id, hash, username FROM users WHERE user_id = $1", &[&id])?;
+        let row = client.query_one("
+            SELECT
+                user_id,
+                hash,
+                username,
+                sc_oauth_token,
+                sc_client_id,
+                liked_track_ids,
+                playlist_ids
+            FROM users WHERE user_id = $1", &[&id])?;
 
         Ok(Self {
             user_id: row.get(0),
             hash: row.get(1),
-            username: row.get(2)
+            username: row.get(2),
+            sc_oauth_token: row.get(3),
+            sc_client_id: row.get(4),
+            liked_track_ids: row.get(5),
+            playlist_ids: row.get(6)
         })
     }
 
     /// Loads the user specified by the given username from the database
     pub fn load_username(client: &mut Client, username: &str) -> Result<Self, Error> {
-        let row = client.query_one("SELECT user_id, hash, username FROM users WHERE username = $1", &[&username])?;
+        let row = client.query_one("
+            SELECT
+                user_id,
+                hash,
+                username,
+                sc_oauth_token,
+                sc_client_id,
+                liked_track_ids,
+                playlist_ids
+            FROM users WHERE username = $1", &[&username])?;
 
         Ok(Self {
             user_id: row.get(0),
             hash: row.get(1),
-            username: row.get(2)
+            username: row.get(2),
+            sc_oauth_token: row.get(3),
+            sc_client_id: row.get(4),
+            liked_track_ids: row.get(5),
+            playlist_ids: row.get(6)
         })
     }
 

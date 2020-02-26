@@ -15,7 +15,6 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::env;
 
-type DbClient = Mutex<Client>;
 struct ArgonSecretKey(String);
 
 /// The error type used throughout the binary
