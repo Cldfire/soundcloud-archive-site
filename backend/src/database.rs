@@ -2,6 +2,7 @@ use rocket::{request::{self, FromRequest}, Request, State, Outcome, http::Status
 use json_structs::*;
 use postgres::Client;
 use argonautica::{Hasher, Verifier};
+use orange_zest::api::common::Track as ScTrack;
 
 use super::*;
 
@@ -229,6 +230,25 @@ impl User {
         )
     }
 }
+
+impl From<ScTrack> for Track {
+    fn from(track: ScTrack) -> Self {
+        Track {
+            track_id: track.id.unwrap(),
+            sc_user_id: track.user_id.unwrap(),
+            length_ms: track.duration.unwrap(),
+            created_at: track.created_at.unwrap(),
+            title: track.title.unwrap(),
+            description: track.description.unwrap(),
+            likes_count: track.likes_count.unwrap(),
+            playback_count: track.playback_count.unwrap(),
+            artwork_url: track.artwork_url.unwrap(),
+            permalink_url: track.permalink_url.unwrap(),
+            download_url: None
+        }
+    }
+}
+
 /// Representation of a track in the database.
 #[derive(Debug, PartialEq)]
 pub struct Track {

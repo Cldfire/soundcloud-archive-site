@@ -32,9 +32,6 @@ pub enum Error {
     LoginFailed
 }
 
-/// If `self` is `Ok`, responds with the wrapped `Responder`. Otherwise prints
-/// an error message with the `Err` value returns an `Err` of
-/// `Status::InternalServerError`.
 impl<'r> Responder<'r> for Error {
     fn respond_to(self, _req: &rocket::request::Request) -> rocket::response::Result<'r> {
             eprintln!("Response was a non-`Responder` `Err`: {:?}.", self);
