@@ -2,6 +2,7 @@ use rocket::{request::{self, FromRequest}, Request, State, Outcome, http::Status
 use json_structs::*;
 use postgres::Client;
 use argonautica::{Hasher, Verifier};
+use orange_zest::api::common::Track as ScTrack;
 
 use super::*;
 
@@ -99,7 +100,7 @@ impl User {
         Ok(client.execute(
             "CREATE TABLE IF NOT EXISTS users (
                 user_id             SERIAL PRIMARY KEY,
-                username            TEXT NOT NULL,
+                username            TEXT NOT NULL UNIQUE,
                 hash                TEXT NOT NULL,
                 sc_oauth_token      TEXT,
                 sc_client_id        TEXT,
@@ -199,6 +200,18 @@ impl User {
         })
     }
 
+    /// Stores the given `AuthCredentials` in the databse for this user.
+    pub fn store_sc_credentials(
+        &self,
+        client: &mut Client,
+        credentials: &AuthCredentials
+    ) -> Result<(), Error> {
+        Ok(client.execute(
+            "UPDATE users SET sc_oauth_token = $1, sc_client_id = $2 WHERE user_id = $3",
+            &[&credentials.oauth_token, &credentials.client_id, &self.user_id]
+        ).map(|_| ())?)
+    }
+
     /// Returns true if this user matches the given `LoginInfo`
     ///
     /// This means that the usernames are equivalent and the password the user
@@ -217,6 +230,25 @@ impl User {
         )
     }
 }
+
+impl From<ScTrack> for Track {
+    fn from(track: ScTrack) -> Self {
+        Track {
+            track_id: track.id.unwrap(),
+            sc_user_id: track.user_id.unwrap(),
+            length_ms: track.duration.unwrap(),
+            created_at: track.created_at.unwrap(),
+            title: track.title.unwrap(),
+            description: track.description.unwrap(),
+            likes_count: track.likes_count.unwrap(),
+            playback_count: track.playback_count.unwrap(),
+            artwork_url: track.artwork_url.unwrap(),
+            permalink_url: track.permalink_url.unwrap(),
+            download_url: None
+        }
+    }
+}
+
 /// Representation of a track in the database.
 #[derive(Debug, PartialEq)]
 pub struct Track {

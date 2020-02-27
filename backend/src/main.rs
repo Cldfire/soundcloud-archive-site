@@ -5,6 +5,7 @@ mod database;
 
 use rocket_contrib::{json::Json, serve::StaticFiles};
 use rocket::{response::{status, NamedFile}, State, http::{Cookie, Status, Cookies}};
+use rocket::response::Responder;
 use json_structs::*;
 use dotenv::dotenv;
 use postgres::{Client, NoTls};
@@ -29,6 +30,13 @@ pub enum Error {
     UserAlreadyExists,
     /// Could not log in with the given `LoginInfo`
     LoginFailed
+}
+
+impl<'r> Responder<'r> for Error {
+    fn respond_to(self, _req: &rocket::request::Request) -> rocket::response::Result<'r> {
+            eprintln!("Response was a non-`Responder` `Err`: {:?}.", self);
+            Err(Status::InternalServerError)
+    }
 }
 
 impl From<argonautica::Error> for Error {
@@ -127,11 +135,12 @@ fn not_found() -> NamedFile {
 
 /// Route used to provide auth credentials (OAuth token and Client ID).
 ///
-/// You have to be logged in with an account to access this route.
+/// You have to be logged in with an account to access this route (applies to
+/// any route with a `User` parameter).
 #[post("/auth-creds", format = "json", data = "<auth_creds>")]
-fn auth_creds(user: User, auth_creds: Json<AuthCredentials>) -> Result<(), Error> {
-    // TODO: this
-    Ok(())
+fn auth_creds(user: User, db: State<DbClient>, auth_creds: Json<AuthCredentials>) -> Result<(), Error> {
+    let mut client = db.lock().unwrap();
+    user.store_sc_credentials(&mut client, &auth_creds)
 }
 
 /// Create a Rocket instance given a PostgreSQL client.
@@ -263,6 +272,7 @@ mod test {
     #[test]
     fn auth_creds() -> Result<(), Error> {
         let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+        let db = client.rocket().state::<DbClient>().unwrap();
 
         let response = client
             .post("/api/auth-creds")
@@ -286,15 +296,25 @@ mod test {
             .dispatch();
         assert_eq!(response.status().class(), StatusClass::Success);
 
+        let auth_creds = AuthCredentials {
+            oauth_token: "bla".into(),
+            client_id: "bla2".into()
+        };
+
         let response = client
             .post("/api/auth-creds")
             .header(ContentType::JSON)
-            .body(serde_json::to_string(&AuthCredentials {
-                oauth_token: "bla".into(),
-                client_id: "bla".into()
-            }).unwrap())
+            .body(serde_json::to_string(&auth_creds).unwrap())
             .dispatch();
         assert_eq!(response.status().class(), StatusClass::Success);
+
+        {
+            let mut conn = db.lock().unwrap();
+            let user = User::load_id(&mut conn, 1)?;
+
+            assert_eq!(user.sc_oauth_token.unwrap(), auth_creds.oauth_token);
+            assert_eq!(user.sc_client_id.unwrap(), auth_creds.client_id);
+        }
 
         Ok(())
     }
