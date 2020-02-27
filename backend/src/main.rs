@@ -5,6 +5,7 @@ mod database;
 
 use rocket_contrib::{json::Json, serve::StaticFiles};
 use rocket::{response::{status, NamedFile}, State, http::{Cookie, Status, Cookies}};
+use rocket::response::Responder;
 use json_structs::*;
 use dotenv::dotenv;
 use postgres::{Client, NoTls};
@@ -29,6 +30,16 @@ pub enum Error {
     UserAlreadyExists,
     /// Could not log in with the given `LoginInfo`
     LoginFailed
+}
+
+/// If `self` is `Ok`, responds with the wrapped `Responder`. Otherwise prints
+/// an error message with the `Err` value returns an `Err` of
+/// `Status::InternalServerError`.
+impl<'r> Responder<'r> for Error {
+    fn respond_to(self, _req: &rocket::request::Request) -> rocket::response::Result<'r> {
+            eprintln!("Response was a non-`Responder` `Err`: {:?}.", self);
+            Err(Status::InternalServerError)
+    }
 }
 
 impl From<argonautica::Error> for Error {

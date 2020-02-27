@@ -52,6 +52,8 @@ After all of this is done:
 * `cargo run` to run the webserver
 * `cargo test -- --test-threads 1` to run tests (tests must be run sequentially due to usage of pg_tmp)
 
+Note: we unfortunately are forced to use Rocket from the repo master branch due to v0.4 of Rocket requiring an older version of `ring` than what a dependency of `orange-zest` requires, and `ring` not supporting cross-version linking. The Rocket master branch has an updated `ring` dependency.
+
 ## Tips for Rust development
 
 * Use the `rust-analyzer` extension for VSCode
