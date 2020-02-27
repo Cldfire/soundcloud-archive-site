@@ -99,7 +99,7 @@ impl User {
         Ok(client.execute(
             "CREATE TABLE IF NOT EXISTS users (
                 user_id             SERIAL PRIMARY KEY,
-                username            TEXT NOT NULL,
+                username            TEXT NOT NULL UNIQUE,
                 hash                TEXT NOT NULL,
                 sc_oauth_token      TEXT,
                 sc_client_id        TEXT,
@@ -197,6 +197,18 @@ impl User {
             liked_track_ids: row.get(5),
             playlist_ids: row.get(6)
         })
+    }
+
+    /// Stores the given `AuthCredentials` in the databse for this user.
+    pub fn store_sc_credentials(
+        &self,
+        client: &mut Client,
+        credentials: &AuthCredentials
+    ) -> Result<(), Error> {
+        Ok(client.execute(
+            "UPDATE users SET sc_oauth_token = $1, sc_client_id = $2 WHERE user_id = $3",
+            &[&credentials.oauth_token, &credentials.client_id, &self.user_id]
+        ).map(|_| ())?)
     }
 
     /// Returns true if this user matches the given `LoginInfo`
