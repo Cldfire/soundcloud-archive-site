@@ -29,3 +29,103 @@ pub struct UserInfo {
     pub user_id: i32,
     pub username: String
 }
+
+/// Summarized information about a track.
+/// 
+/// Useful for displaying a long list of tracks on the frontend.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TrackInfoBrief {
+    /// A unique numeric id for the track
+    pub track_id: i64,
+    /// The length of the track in milliseconds
+    pub length_ms: i64,
+    /// When the track was uploaded to SoundCloud as a date-time string
+    pub created_at: String,
+    /// The name of the track
+    pub title: String,
+    /// The number of times the track was played on SoundCloud
+    pub playback_count: i64,
+
+    /// The id of the SoundCloud user that uploaded this track
+    pub sc_user_id: i64,
+    /// The user's display name
+    pub username: String
+}
+
+/// Detailed information about a track.
+/// 
+/// Useful for displaying detailed information about a single track on
+/// the frontend.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TrackInfoLong {
+    /// Everything that was in the brief version of the struct
+    pub brief_info: TrackInfoBrief,
+
+    /// A description of the track written by the user who posted it
+    pub description: String,
+    /// The number of times the track was liked on SoundCloud
+    pub likes_count: i64,
+    /// A URL to the track's album art
+    pub artwork_url: Option<String>,
+    /// A URL to the track on SoundCloud
+    pub track_permalink_url: String,
+
+    /// A URL to the profile image of the user that uploaded this track on
+    /// SoundCloud
+    pub avatar_url: Option<String>,
+    /// The user's full name
+    pub full_name: String,
+    /// A URL to the user on SoundCloud
+    pub user_permalink_url: String
+}
+
+/// Summarized information about a playlist.
+/// 
+/// Useful for displaying a long list of playlists on the frontend.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PlaylistInfoBrief {
+    /// A unique numeric id for the playlist
+    pub playlist_id: i64,
+    /// The total length of all tracks in the playlist combined in milliseconds
+    pub length_ms: i64,
+    /// When the playlist was created on SoundCloud as a date-time string
+    pub created_at: String,
+    /// The name of the playlist
+    pub title: String,
+    /// Whether or not this playlist is an album
+    pub is_album: bool,
+    /// The number of tracks in this playlist
+    pub num_tracks: i64,
+
+    /// The id of the soundcloud user that created this playlist
+    pub sc_user_id: i64,
+    /// The user's display name
+    pub username: String
+}
+
+/// Detailed information about a playlist.
+/// 
+/// Useful for displaying detailed information about a single playlist on
+/// the frontend.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PlaylistInfoLong {
+    /// Everything that was in the brief version of the struct
+    pub brief_info: PlaylistInfoBrief,
+
+    /// IDs of tracks that are a part of this playlist
+    pub track_ids: Vec<i64>,
+    /// A URL to the playlist on SoundCloud
+    pub playlist_permalink_url: String,
+    /// The playlist's description
+    pub description: String,
+    /// The number of times the playlist was liked on SoundCloud
+    pub likes_count: i64,
+
+    /// A URL to the profile image of the user that uploaded this track on
+    /// SoundCloud
+    pub avatar_url: Option<String>,
+    /// The user's full name
+    pub full_name: String,
+    /// A URL to the user on SoundCloud
+    pub user_permalink_url: String
+}

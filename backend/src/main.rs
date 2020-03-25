@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Arc};
 use std::env;
 use std::thread;
+use std::collections::HashSet;
 
 struct ArgonSecretKey(String);
 
@@ -180,7 +181,17 @@ fn do_scraping(
     let num_recent_likes = num_recent_likes.unwrap_or(std::u64::MAX);
     let num_recent_playlists = num_recent_playlists.unwrap_or(std::u64::MAX);
 
-    if let (Some(oauth_token), Some(client_id)) = (user.sc_oauth_token, user.sc_client_id) {
+    let mut liked_track_ids = HashSet::new();
+    for id in &user.liked_track_ids {
+        liked_track_ids.insert(*id);
+    }
+
+    let mut playlist_ids = HashSet::new();
+    for id in &user.playlist_ids {
+        playlist_ids.insert(*id);
+    }
+
+    if let (Some(oauth_token), Some(client_id)) = (user.sc_oauth_token.clone(), user.sc_client_id.clone()) {
         thread::spawn(move || -> Result<(), Error> {
             let zester = orange_zest::Zester::new(oauth_token, client_id)?;
 
@@ -195,7 +206,11 @@ fn do_scraping(
                         &mut conn,
                         &SoundCloudUser::from(track.user.as_ref().unwrap())
                     )?;
+
+                    liked_track_ids.insert(track.id.unwrap());
                 }
+
+                user.update_liked_track_ids(&mut conn, liked_track_ids)?;
 
                 for playlist in playlists.playlists.iter() {
                     Playlist::from(playlist).create_new(
@@ -203,7 +218,11 @@ fn do_scraping(
                         &SoundCloudUser::from(playlist.user.as_ref().unwrap()),
                         &playlist.tracks.as_ref().unwrap().into_iter().map(|t| Track::from(t)).collect()
                     )?;
+
+                    playlist_ids.insert(playlist.id.unwrap());
                 }
+
+                user.update_playlist_ids(&mut conn, playlist_ids)?;
             }
 
             Ok(())
@@ -213,6 +232,118 @@ fn do_scraping(
     } else {
         Err(Error::ScAuthTokensNotPresent)
     }
+}
+
+/// Get a list of all the logged-in user's liked tracks
+#[get("/liked-tracks")]
+fn liked_tracks(user: User, db: State<DbClient>) -> Result<Json<Vec<TrackInfoBrief>>, Error> {
+    let mut conn = db.lock().unwrap();
+    let result = conn.query("
+        SELECT tracks.track_id, tracks.length_ms, tracks.created_at, tracks.title,
+            tracks.playback_count, soundcloudusers.sc_user_id, soundcloudusers.username
+        FROM tracks, soundcloudusers
+        WHERE track_id = ANY($1) AND tracks.sc_user_id = soundcloudusers.sc_user_id
+    ", &[&user.liked_track_ids])?;
+
+    Ok(Json(result.into_iter().map(|r| TrackInfoBrief {
+        track_id: r.get(0),
+        length_ms: r.get(1),
+        created_at: r.get(2),
+        title: r.get(3),
+        playback_count: r.get(4),
+        sc_user_id: r.get(5),
+        username: r.get(6)
+    }).collect()))
+}
+
+/// Get detailed information for a specific track
+#[get("/track-info/<id>")]
+fn track_info(_user: User, db: State<DbClient>, id: i64) -> Result<Json<TrackInfoLong>, Error> {
+    let mut conn = db.lock().unwrap();
+    let r = conn.query_one("
+        SELECT tracks.track_id, tracks.length_ms, tracks.created_at, tracks.title,
+            tracks.playback_count, soundcloudusers.sc_user_id, soundcloudusers.username,
+            tracks.description, tracks.likes_count, tracks.artwork_url, tracks.permalink_url,
+            soundcloudusers.avatar_url, soundcloudusers.full_name, soundcloudusers.permalink_url
+        FROM tracks, soundcloudusers
+        WHERE track_id = $1 AND tracks.sc_user_id = soundcloudusers.sc_user_id
+    ", &[&id])?;
+
+    Ok(Json(TrackInfoLong {
+        brief_info: TrackInfoBrief {
+            track_id: r.get(0),
+            length_ms: r.get(1),
+            created_at: r.get(2),
+            title: r.get(3),
+            playback_count: r.get(4),
+            sc_user_id: r.get(5),
+            username: r.get(6)
+        },
+        description: r.get(7),
+        likes_count: r.get(8),
+        artwork_url: r.get(9),
+        track_permalink_url: r.get(10),
+        avatar_url: r.get(11),
+        full_name: r.get(12),
+        user_permalink_url: r.get(13)
+    }))
+}
+
+/// Get a list of all the logged-in user's liked and owned playlists
+#[get("/liked-and-owned-playlists")]
+fn liked_and_owned_playlists(user: User, db: State<DbClient>) -> Result<Json<Vec<PlaylistInfoBrief>>, Error> {
+    let mut conn = db.lock().unwrap();
+    let result = conn.query("
+        SELECT p.playlist_id, p.length_ms, p.created_at, p.title, p.is_album,
+            p.num_tracks, u.sc_user_id, u.username
+        FROM playlists p, soundcloudusers u
+        WHERE playlist_id = ANY($1) AND p.sc_user_id = u.sc_user_id
+    ", &[&user.playlist_ids])?;
+
+    Ok(Json(result.into_iter().map(|r| PlaylistInfoBrief {
+        playlist_id: r.get(0),
+        length_ms: r.get(1),
+        created_at: r.get(2),
+        title: r.get(3),
+        is_album: r.get(4),
+        num_tracks: r.get(5),
+        sc_user_id: r.get(6),
+        username: r.get(7)
+    }).collect()))
+}
+
+/// Get detailed information for a specific playlist
+#[get("/playlist-info/<id>")]
+fn playlist_info(_user: User, db: State<DbClient>, id: i64) -> Result<Json<PlaylistInfoLong>, Error> {
+    let mut conn = db.lock().unwrap();
+    let r = conn.query_one("
+        SELECT p.playlist_id, p.length_ms, p.created_at, p.title, p.is_album,
+            p.num_tracks, u.sc_user_id, u.username, p.track_ids,
+            p.permalink_url, p.description, p.likes_count, u.avatar_url,
+            u.full_name, u.permalink_url
+        FROM playlists p, soundcloudusers u
+        WHERE playlist_id = $1 AND p.sc_user_id = u.sc_user_id
+    ", &[&id])?;
+
+    Ok(Json(PlaylistInfoLong {
+        brief_info: PlaylistInfoBrief {
+            playlist_id: r.get(0),
+            length_ms: r.get(1),
+            created_at: r.get(2),
+            title: r.get(3),
+            is_album: r.get(4),
+            num_tracks: r.get(5),
+            sc_user_id: r.get(6),
+            username: r.get(7)
+        },
+        track_ids: r.get(8),
+        playlist_permalink_url: r.get(9),
+        description: r.get(10),
+        likes_count: r.get(11),
+        avatar_url: r.get(12),
+        full_name: r.get(13),
+        user_permalink_url: r.get(14)
+    }))
 }
 
 /// Create a Rocket instance given a PostgreSQL client.
@@ -225,6 +356,10 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
             .mount("/api", routes![
                 auth_creds,
                 do_scraping,
+                liked_tracks,
+                track_info,
+                liked_and_owned_playlists,
+                playlist_info,
                 register,
                 login,
                 logout,
@@ -312,7 +447,8 @@ mod test {
         let playlist = Playlist {
             playlist_id: 82334,
             sc_user_id: 102832,
-            track_ids: vec![847238, 1028438],
+            track_ids: vec![track1.track_id, track2.track_id],
+            num_tracks: 2,
             length_ms: 6334366,
             created_at: "2019-09-17T06:29:59Z".into(),
             title: "My Killer Tunes".into(),
@@ -469,7 +605,7 @@ mod test {
 
     #[test]
     #[ignore]
-    fn do_scraping() -> Result<(), Error> {
+    fn scraping_and_info_retrieval() -> Result<(), Error> {
         let client = HttpClient::new(rocket(test_client()?)?).unwrap();
         let db = client.rocket().state::<DbClient>().unwrap();
 
@@ -497,8 +633,8 @@ mod test {
             .dispatch();
         assert_eq!(response.status().class(), StatusClass::Success);
 
-        let num_recent_likes = 10;
-        let num_recent_playlists = 2;
+        let num_recent_likes: i64 = 10;
+        let num_recent_playlists: i64 = 2;
 
         let response = client
             .post(format!(
@@ -510,15 +646,54 @@ mod test {
         assert_eq!(response.status().class(), StatusClass::Success);
 
         thread::sleep(std::time::Duration::from_secs(10));
-
+        
+        // Database stuff, not relevant to frontend
         {
             let mut conn = db.lock().unwrap();
             let track_count: i64 = conn.query_one("SELECT COUNT(track_id) FROM tracks", &[])?.get(0);
             let playlist_count: i64 = conn.query_one("SELECT COUNT(playlist_id) FROM playlists", &[])?.get(0);
 
             assert!(track_count >= num_recent_likes);
-            assert!(playlist_count == num_recent_playlists);
+            assert_eq!(playlist_count, num_recent_playlists);
+
+            let loaded_user = User::load_username(&mut conn, &rinfo.username)?;
+            assert_eq!(loaded_user.liked_track_ids.len() as i64, num_recent_likes);
+            assert_eq!(loaded_user.playlist_ids.len() as i64, num_recent_playlists);
         }
+
+        // Likes and tracks stuff
+        let mut response = client
+            .get("/api/liked-tracks")
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
+        
+        let tracks_brief: Vec<TrackInfoBrief> = serde_json::from_reader(response.body().unwrap().into_inner())?;
+        assert_eq!(tracks_brief.len() as i64, num_recent_likes);
+
+        let mut response = client   
+            .get(format!("/api/track-info/{}", tracks_brief[0].track_id))
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
+
+        let track_info: TrackInfoLong = serde_json::from_reader(response.body().unwrap().into_inner())?;
+        assert_eq!(track_info.brief_info.track_id, tracks_brief[0].track_id);
+
+        // Playlist stuff
+        let mut response = client
+            .get("/api/liked-and-owned-playlists")
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
+
+        let playlists_brief: Vec<PlaylistInfoBrief> = serde_json::from_reader(response.body().unwrap().into_inner())?;
+        assert_eq!(playlists_brief.len() as i64, num_recent_playlists);
+
+        let mut response = client   
+            .get(format!("/api/playlist-info/{}", playlists_brief[0].playlist_id))
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
+
+        let playlist_info: PlaylistInfoLong = serde_json::from_reader(response.body().unwrap().into_inner())?;
+        assert_eq!(playlist_info.brief_info.playlist_id, playlists_brief[0].playlist_id);
 
         Ok(())
     }

@@ -213,6 +213,30 @@ impl User {
         ).map(|_| ())?)
     }
 
+    /// Set this user's liked_track_ids to the values produced by the given iterator.
+    pub fn update_liked_track_ids<I: IntoIterator<Item = i64>>(
+        &self,
+        client: &mut Client,
+        ids: I
+    ) -> Result<(), Error> {
+        Ok(client.execute(
+            "UPDATE users SET liked_track_ids = $1 WHERE user_id = $2",
+            &[&ids.into_iter().collect::<Vec<i64>>(), &self.user_id]
+        ).map(|_| ())?)
+    }
+
+    /// Set this user's playlist_ids to the values produced by the given iterator.
+    pub fn update_playlist_ids<I: IntoIterator<Item = i64>>(
+        &self,
+        client: &mut Client,
+        ids: I
+    ) -> Result<(), Error> {
+        Ok(client.execute(
+            "UPDATE users SET playlist_ids = $1 WHERE user_id = $2",
+            &[&ids.into_iter().collect::<Vec<i64>>(), &self.user_id]
+        ).map(|_| ())?)
+    }
+
     /// Returns true if this user matches the given `LoginInfo`
     ///
     /// This means that the usernames are equivalent and the password the user
@@ -454,6 +478,8 @@ pub struct Playlist {
     pub sc_user_id: i64,
     /// IDs of tracks that are a part of this playlist
     pub track_ids: Vec<i64>,
+    /// The number of tracks in the playlist
+    pub num_tracks: i64,
     /// The total length of all tracks in the playlist combined in milliseconds
     pub length_ms: i64,
     /// When the playlist was created on SoundCloud as a date-time string
@@ -476,6 +502,7 @@ impl From<&ScPlaylist> for Playlist {
             playlist_id: playlist.id.unwrap(),
             sc_user_id: playlist.user_id.unwrap(),
             track_ids: playlist.tracks.as_ref().unwrap().iter().map(|t| t.id.unwrap()).collect(),
+            num_tracks: playlist.tracks.as_ref().unwrap().len() as i64,
             length_ms: playlist.duration.unwrap_or(0),
             created_at: playlist.created_at.clone().unwrap(),
             title: playlist.title.clone().unwrap_or("".into()),
@@ -497,6 +524,7 @@ impl Playlist {
                 playlist_id     BIGINT PRIMARY KEY,
                 sc_user_id      BIGINT NOT NULL references soundcloudusers(sc_user_id),
                 track_ids       BIGINT[] NOT NULL,
+                num_tracks      BIGINT NOT NULL,
                 length_ms       BIGINT NOT NULL,
                 created_at      TEXT NOT NULL,
                 title           TEXT NOT NULL,
@@ -525,12 +553,13 @@ impl Playlist {
         }
 
         Ok(client.execute(
-            "INSERT INTO playlists VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            "INSERT INTO playlists VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              ON CONFLICT DO NOTHING",
             &[
                 &self.playlist_id,
                 &self.sc_user_id,
                 &self.track_ids,
+                &self.num_tracks,
                 &self.length_ms,
                 &self.created_at,
                 &self.title,
@@ -549,6 +578,7 @@ impl Playlist {
                 playlist_id,
                 sc_user_id,
                 track_ids,
+                num_tracks,
                 length_ms,
                 created_at,
                 title,
@@ -565,13 +595,14 @@ impl Playlist {
             playlist_id: row.get(0),
             sc_user_id: row.get(1),
             track_ids: row.get(2),
-            length_ms: row.get(3),
-            created_at: row.get(4),
-            title: row.get(5),
-            permalink_url: row.get(6),
-            description: row.get(7),
-            likes_count: row.get(8),
-            is_album: row.get(9)
+            num_tracks: row.get(3),
+            length_ms: row.get(4),
+            created_at: row.get(5),
+            title: row.get(6),
+            permalink_url: row.get(7),
+            description: row.get(8),
+            likes_count: row.get(9),
+            is_album: row.get(10)
         })
     }
 }

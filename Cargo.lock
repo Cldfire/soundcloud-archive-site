@@ -1412,7 +1412,7 @@ dependencies = [
 [[package]]
 name = "rocket"
 version = "0.5.0-dev"
-source = "git+https://github.com/SergioBenitez/Rocket.git#dfc9e9aab01d349da32c52db393e35b7fffea63c"
+source = "git+https://github.com/SergioBenitez/Rocket.git?rev=dfc9e9aab01d349da32c52db393e35b7fffea63c#dfc9e9aab01d349da32c52db393e35b7fffea63c"
 dependencies = [
  "atty",
  "binascii",
@@ -1432,7 +1432,7 @@ dependencies = [
 [[package]]
 name = "rocket_codegen"
 version = "0.5.0-dev"
-source = "git+https://github.com/SergioBenitez/Rocket.git#dfc9e9aab01d349da32c52db393e35b7fffea63c"
+source = "git+https://github.com/SergioBenitez/Rocket.git?rev=dfc9e9aab01d349da32c52db393e35b7fffea63c#dfc9e9aab01d349da32c52db393e35b7fffea63c"
 dependencies = [
  "devise",
  "glob 0.3.0",
@@ -1446,7 +1446,7 @@ dependencies = [
 [[package]]
 name = "rocket_contrib"
 version = "0.5.0-dev"
-source = "git+https://github.com/SergioBenitez/Rocket.git#dfc9e9aab01d349da32c52db393e35b7fffea63c"
+source = "git+https://github.com/SergioBenitez/Rocket.git?rev=dfc9e9aab01d349da32c52db393e35b7fffea63c#dfc9e9aab01d349da32c52db393e35b7fffea63c"
 dependencies = [
  "log 0.4.8",
  "notify",
@@ -1458,7 +1458,7 @@ dependencies = [
 [[package]]
 name = "rocket_http"
 version = "0.5.0-dev"
-source = "git+https://github.com/SergioBenitez/Rocket.git#dfc9e9aab01d349da32c52db393e35b7fffea63c"
+source = "git+https://github.com/SergioBenitez/Rocket.git?rev=dfc9e9aab01d349da32c52db393e35b7fffea63c#dfc9e9aab01d349da32c52db393e35b7fffea63c"
 dependencies = [
  "cookie 0.13.3",
  "hyper",
