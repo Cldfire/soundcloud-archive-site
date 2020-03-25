@@ -13,8 +13,9 @@ use postgres::{Client, NoTls};
 use database::*;
 
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 use std::env;
+use std::thread;
 
 struct ArgonSecretKey(String);
 
@@ -26,8 +27,11 @@ pub enum Error {
     HashError(argonautica::Error),
     PostgresErr(postgres::error::Error),
     JsonErr(serde_json::Error),
+    OrangeZestErr(orange_zest::Error),
     /// An attempt was made to create a user given details that already exist
     UserAlreadyExists,
+    /// The backend did not have the auth tokens to do scraping for the requested user with
+    ScAuthTokensNotPresent,
     /// Could not log in with the given `LoginInfo`
     LoginFailed
 }
@@ -54,6 +58,12 @@ impl From<postgres::error::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Self {
         Self::JsonErr(err)
+    }
+}
+
+impl From<orange_zest::Error> for Error {
+    fn from(err: orange_zest::Error) -> Self {
+        Self::OrangeZestErr(err)
     }
 }
 
@@ -143,17 +153,77 @@ fn auth_creds(user: User, db: State<DbClient>, auth_creds: Json<AuthCredentials>
     user.store_sc_credentials(&mut client, &auth_creds)
 }
 
+/// Tell the backend do scrape all available data from SoundCloud for the logged-in
+/// user.
+///
+/// Make sure you have posted valid credentials to `/auth-creds` before you post
+/// to this route.
+///
+/// The `num_recent_*` query parameters allow you to specify how many recent likes
+/// or playlists should be scraped. For instance, a request such as
+/// `/do-scraping?num_recent_likes=5&num_recent_playlists=0` will scrape 5 likes
+/// and will not scrape playlists at all.
+///
+/// If the query parameters are not specified, this route scrapes all available
+/// info.
+#[post("/do-scraping?<num_recent_likes>&<num_recent_playlists>")]
+fn do_scraping(
+    user: User,
+    db: State<DbClient>,
+    num_recent_likes: Option<u64>,
+    num_recent_playlists: Option<u64>
+) -> Result<(), Error> {
+    let db = db.clone();
+    let num_recent_likes = num_recent_likes.unwrap_or(std::u64::MAX);
+    let num_recent_playlists = num_recent_playlists.unwrap_or(std::u64::MAX);
+
+    if let (Some(oauth_token), Some(client_id)) = (user.sc_oauth_token, user.sc_client_id) {
+        thread::spawn(move || -> Result<(), Error> {
+            let zester = orange_zest::Zester::new(oauth_token, client_id)?;
+
+            let likes = zester.likes(num_recent_likes, |_| {})?;
+            let playlists = zester.playlists(num_recent_playlists, |_| {})?;
+
+            {
+                let mut conn = db.lock().unwrap();
+
+                for track in likes.collections.iter().map(|c| &c.track) {
+                    Track::from(track).create_new(
+                        &mut conn,
+                        &SoundCloudUser::from(track.user.as_ref().unwrap())
+                    )?;
+                }
+
+                for playlist in playlists.playlists.iter() {
+                    Playlist::from(playlist).create_new(
+                        &mut conn,
+                        &SoundCloudUser::from(playlist.user.as_ref().unwrap()),
+                        &playlist.tracks.as_ref().unwrap().into_iter().map(|t| Track::from(t)).collect()
+                    )?;
+                }
+            }
+
+            Ok(())
+        });
+
+        Ok(())
+    } else {
+        Err(Error::ScAuthTokensNotPresent)
+    }
+}
+
 /// Create a Rocket instance given a PostgreSQL client.
 fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
     Ok(
         rocket::ignite()
-            .manage(Mutex::new(client))
+            .manage(Arc::new(Mutex::new(client)))
             .manage(ArgonSecretKey(env::var("ARGON_SECRET_KEY").unwrap()))
             // TODO: if the directory you put frontend static files in is different
             // then change this accordingly
             .mount("/", StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/frontend/public")))
             .mount("/api", routes![
                 auth_creds,
+                do_scraping,
                 register,
                 login,
                 logout,
@@ -211,7 +281,7 @@ mod test {
             description: "This is a track for testing the database".into(),
             likes_count: 4838,
             playback_count: 30248,
-            artwork_url: "https://thislinkisinvalid.com".into(),
+            artwork_url: Some("https://thislinkisinvalid.com".into()),
             permalink_url: "https://thislinkisalsoinvalid.com".into(),
             download_url: Some("https://thetrack/download.mp3".into())
         };
@@ -225,14 +295,14 @@ mod test {
             description: "Does it need explanation??".into(),
             likes_count: 53828,
             playback_count: 9928732,
-            artwork_url: "https://amazingbanger.dev".into(),
+            artwork_url: Some("https://amazingbanger.dev".into()),
             permalink_url: "https://bangbang.com".into(),
             download_url: None
         };
     
         let sc_user = SoundCloudUser {
             sc_user_id: 102832,
-            avatar_url: "https://anotherbadurl.net".into(),
+            avatar_url: Some("https://anotherbadurl.net".into()),
             full_name: "John Bayer".into(),
             username: "superdude".into(),
             permalink_url: "https://ohnoalinkthatdoesntwork.com".into()
@@ -252,9 +322,9 @@ mod test {
         };
 
         sc_user.create_new(&mut db_client)?;
-        track1.create_new(&mut db_client)?;
-        track2.create_new(&mut db_client)?;
-        playlist.create_new(&mut db_client)?;
+        track1.create_new(&mut db_client, &sc_user)?;
+        track2.create_new(&mut db_client, &sc_user)?;
+        playlist.create_new(&mut db_client, &sc_user, &vec![track1.clone(), track2.clone()])?;
 
         let loaded_sc_user = SoundCloudUser::load_id(&mut db_client, sc_user.sc_user_id)?;
         let loaded_track1 = Track::load_id(&mut db_client, track1.track_id)?;
@@ -392,6 +462,62 @@ mod test {
             .body(serde_json::to_string(&rinfo2).unwrap())
             .dispatch();
         assert_eq!(response.status().class(), StatusClass::ServerError);
+
+        Ok(())
+    }
+
+    #[test]
+    #[ignore]
+    fn do_scraping() -> Result<(), Error> {
+        let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+        let db = client.rocket().state::<DbClient>().unwrap();
+
+        let rinfo = RegisterInfo {
+            username: "testusername".into(),
+            password: "testpass".into()
+        };
+
+        let response = client
+            .post("/api/register")
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&rinfo).unwrap())
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
+
+        let auth_creds = AuthCredentials {
+            oauth_token: env::var("SC_OAUTH_TOKEN").unwrap(),
+            client_id: env::var("SC_CLIENT_ID").unwrap()
+        };
+
+        let response = client
+            .post("/api/auth-creds")
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&auth_creds).unwrap())
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
+
+        let num_recent_likes = 10;
+        let num_recent_playlists = 2;
+
+        let response = client
+            .post(format!(
+                "/api/do-scraping?num_recent_likes={}&num_recent_playlists={}",
+                num_recent_likes,
+                num_recent_playlists
+            ))
+            .dispatch();
+        assert_eq!(response.status().class(), StatusClass::Success);
+
+        thread::sleep(std::time::Duration::from_secs(10));
+
+        {
+            let mut conn = db.lock().unwrap();
+            let track_count: i64 = conn.query_one("SELECT COUNT(track_id) FROM tracks", &[])?.get(0);
+            let playlist_count: i64 = conn.query_one("SELECT COUNT(playlist_id) FROM playlists", &[])?.get(0);
+
+            assert!(track_count >= num_recent_likes);
+            assert!(playlist_count == num_recent_playlists);
+        }
 
         Ok(())
     }

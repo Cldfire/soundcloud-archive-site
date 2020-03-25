@@ -2,11 +2,12 @@ use rocket::{request::{self, FromRequest}, Request, State, Outcome, http::Status
 use json_structs::*;
 use postgres::Client;
 use argonautica::{Hasher, Verifier};
-use orange_zest::api::common::Track as ScTrack;
+use orange_zest::api::common::{Track as ScTrack, User as ScUser};
+use orange_zest::api::playlists::Playlist as ScPlaylist;
 
 use super::*;
 
-pub type DbClient = Mutex<Client>;
+pub type DbClient = Arc<Mutex<Client>>;
 
 /// Creates a PostgreSQL client based off of environment variables.
 pub fn postgresql_client() -> Result<Client, Error> {
@@ -231,26 +232,8 @@ impl User {
     }
 }
 
-impl From<ScTrack> for Track {
-    fn from(track: ScTrack) -> Self {
-        Track {
-            track_id: track.id.unwrap(),
-            sc_user_id: track.user_id.unwrap(),
-            length_ms: track.duration.unwrap(),
-            created_at: track.created_at.unwrap(),
-            title: track.title.unwrap(),
-            description: track.description.unwrap(),
-            likes_count: track.likes_count.unwrap(),
-            playback_count: track.playback_count.unwrap(),
-            artwork_url: track.artwork_url.unwrap(),
-            permalink_url: track.permalink_url.unwrap(),
-            download_url: None
-        }
-    }
-}
-
 /// Representation of a track in the database.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Track {
     /// A unique numeric id for the track
     pub track_id: i64,
@@ -269,13 +252,31 @@ pub struct Track {
     /// The number of times the track was played on SoundCloud
     pub playback_count: i64,
     /// A URL to the track's album art
-    pub artwork_url: String,
+    pub artwork_url: Option<String>,
     /// A URL to the track on SoundCloud
     pub permalink_url: String,
     /// A URL via which the audio data for this track can be downloaded on the backend.
     ///
     /// This may not exist for every track.
     pub download_url: Option<String>
+}
+
+impl From<&ScTrack> for Track {
+    fn from(track: &ScTrack) -> Self {
+        Track {
+            track_id: track.id.unwrap(),
+            sc_user_id: track.user_id.unwrap(),
+            length_ms: track.duration.unwrap(),
+            created_at: track.created_at.clone().unwrap(),
+            title: track.title.clone().unwrap_or("".into()),
+            description: track.description.clone().unwrap_or("".into()),
+            likes_count: track.likes_count.clone().unwrap_or(0),
+            playback_count: track.playback_count.unwrap_or(0),
+            artwork_url: track.artwork_url.clone(),
+            permalink_url: track.permalink_url.clone().unwrap(),
+            download_url: None
+        }
+    }
 }
 
 impl Track {
@@ -293,7 +294,7 @@ impl Track {
                 description     TEXT NOT NULL,
                 likes_count     BIGINT NOT NULL,
                 playback_count  BIGINT NOT NULL,
-                artwork_url     TEXT NOT NULL,
+                artwork_url     TEXT,
                 permalink_url   TEXT NOT NULL,
                 download_url    TEXT
             )",
@@ -301,10 +302,13 @@ impl Track {
         ).map(|_| ())?)
     }
 
-    /// Creates a new track in the database based on an instance of the struct.
-    pub fn create_new(&self, client: &mut Client) -> Result<(), Error> {
+    /// Creates a new track in the database based on an instance of the struct
+    /// and a reference to the user that owns the track.
+    pub fn create_new(&self, client: &mut Client, user: &SoundCloudUser) -> Result<(), Error> {
+        user.create_new(client)?;
         Ok(client.execute(
-            "INSERT INTO tracks VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+            "INSERT INTO tracks VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            ON CONFLICT DO NOTHING",
             &[
                 &self.track_id,
                 &self.sc_user_id,
@@ -358,18 +362,30 @@ impl Track {
 }
 
 /// Representation of a SoundCloud user in the database
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SoundCloudUser {
     /// The id of the SoundCloud user
     pub sc_user_id: i64,
     /// A URL to the user's profile image on SoundCloud
-    pub avatar_url: String,
+    pub avatar_url: Option<String>,
     /// The user's full name
     pub full_name: String,
     /// The user's display name
     pub username: String,
     /// A URL to the user on SoundCloud
     pub permalink_url: String
+}
+
+impl From<&ScUser> for SoundCloudUser {
+    fn from(u: &ScUser) -> Self {
+        Self {
+            sc_user_id: u.id.unwrap(),
+            avatar_url: u.avatar_url.clone(),
+            full_name: u.full_name.clone().unwrap_or("".into()),
+            username: u.username.clone().unwrap(),
+            permalink_url: u.permalink_url.clone().unwrap()
+        }
+    }
 }
 
 impl SoundCloudUser {
@@ -380,7 +396,7 @@ impl SoundCloudUser {
         Ok(client.execute(
             "CREATE TABLE IF NOT EXISTS soundcloudusers (
                 sc_user_id      BIGINT PRIMARY KEY,
-                avatar_url      TEXT NOT NULL,
+                avatar_url      TEXT,
                 full_name       TEXT NOT NULL,
                 username        TEXT NOT NULL,
                 permalink_url   TEXT NOT NULL
@@ -393,7 +409,8 @@ impl SoundCloudUser {
     /// the struct.
     pub fn create_new(&self, client: &mut Client) -> Result<(), Error> {
         Ok(client.execute(
-            "INSERT INTO soundcloudusers VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO soundcloudusers VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT DO NOTHING",
             &[
                 &self.sc_user_id,
                 &self.avatar_url,
@@ -429,7 +446,7 @@ impl SoundCloudUser {
 }
 
 /// Representation of a playlist in the database.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Playlist {
     /// A unique numeric id for the playlist
     pub playlist_id: i64,
@@ -451,6 +468,23 @@ pub struct Playlist {
     pub likes_count: i64,
     /// Whether or not this playlist is an album
     pub is_album: bool
+}
+
+impl From<&ScPlaylist> for Playlist {
+    fn from(playlist: &ScPlaylist) -> Self {
+        Self {
+            playlist_id: playlist.id.unwrap(),
+            sc_user_id: playlist.user_id.unwrap(),
+            track_ids: playlist.tracks.as_ref().unwrap().iter().map(|t| t.id.unwrap()).collect(),
+            length_ms: playlist.duration.unwrap_or(0),
+            created_at: playlist.created_at.clone().unwrap(),
+            title: playlist.title.clone().unwrap_or("".into()),
+            permalink_url: playlist.permalink_url.clone().unwrap(),
+            description: playlist.description.clone().unwrap_or("".into()),
+            likes_count: playlist.likes_count.unwrap_or(0),
+            is_album: playlist.is_album.unwrap_or(false)
+        }
+    }
 }
 
 impl Playlist {
@@ -475,11 +509,24 @@ impl Playlist {
         ).map(|_| ())?)
     }
 
-    /// Creates a new SoundCloud user in the database based on an instance of
-    /// the struct.
-    pub fn create_new(&self, client: &mut Client) -> Result<(), Error> {
+    /// Creates a new playlist in the database based on an instance of the struct
+    /// and references to the user that owns the playlist and the list of tracks
+    /// in the playlist.
+    pub fn create_new(
+        &self,
+        client: &mut Client,
+        user: &SoundCloudUser,
+        tracks: &Vec<Track>
+    ) -> Result<(), Error> {
+        user.create_new(client)?;
+
+        for track in tracks {
+            track.create_new(client, user)?;
+        }
+
         Ok(client.execute(
-            "INSERT INTO playlists VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+            "INSERT INTO playlists VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT DO NOTHING",
             &[
                 &self.playlist_id,
                 &self.sc_user_id,

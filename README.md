@@ -43,6 +43,13 @@ POSTGRES_HOST="..."
 ARGON_SECRET_KEY="..."
 ```
 
+Also, optionally provide the following for use by some tests (run via `cargo test -- --test-threads 1 --ignored`):
+
+```
+SC_CLIENT_ID="..."
+SC_OAUTH_TOKEN="..."
+```
+
 See [dotenv](https://github.com/dotenv-rs/dotenv) for more.
 
 Finally, you'll need [pg_tmp](https://github.com/eradman/ephemeralpg) installed and available for unit tests to be able to run.
@@ -51,6 +58,7 @@ After all of this is done:
 
 * `cargo run` to run the webserver
 * `cargo test -- --test-threads 1` to run tests (tests must be run sequentially due to usage of pg_tmp)
+* `cargo test -- --test-threads 1 --ignored` to run tests that involve scraping data from soundcloud (note that you must set some environment variables first, see above)
 
 Note: we unfortunately are forced to use Rocket from the repo master branch due to v0.4 of Rocket requiring an older version of `ring` than what a dependency of `orange-zest` requires, and `ring` not supporting cross-version linking. The Rocket master branch has an updated `ring` dependency.
 
