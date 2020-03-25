@@ -12,12 +12,18 @@ use postgres::{Client, NoTls};
 
 use database::*;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, Arc};
 use std::env;
 use std::thread;
 
 struct ArgonSecretKey(String);
+
+// Returns a path to the directory where the frontend files are located
+fn frontend_dir() -> PathBuf {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    manifest_dir.parent().unwrap().join("frontend/")
+}
 
 /// The error type used throughout the binary
 #[derive(Debug)]
@@ -137,10 +143,7 @@ fn not_logged_in_post(_whatever: std::path::PathBuf) -> status::Custom<()> {
 // TODO: if you need requests to be directed at a different file, change this accordingly
 #[catch(404)]
 fn not_found() -> NamedFile {
-    NamedFile::open(Path::new(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/frontend/public/index.html")
-    )).unwrap()
+    NamedFile::open(frontend_dir().join("index.html")).unwrap()
 }
 
 /// Route used to provide auth credentials (OAuth token and Client ID).
@@ -218,9 +221,7 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
         rocket::ignite()
             .manage(Arc::new(Mutex::new(client)))
             .manage(ArgonSecretKey(env::var("ARGON_SECRET_KEY").unwrap()))
-            // TODO: if the directory you put frontend static files in is different
-            // then change this accordingly
-            .mount("/", StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/frontend/public")))
+            .mount("/", StaticFiles::from(frontend_dir()))
             .mount("/api", routes![
                 auth_creds,
                 do_scraping,

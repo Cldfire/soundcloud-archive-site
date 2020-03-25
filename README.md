@@ -21,7 +21,7 @@ If you want to see an example of something I've done in the past with Svelte, se
 The backend is in `backend` and is written in Rust. It requires Rust nightly due to the usage of Rocket. Make sure you have Rust [installed](https://www.rust-lang.org/tools/install), and then do the following from the repo root:
 
 ```bash
-rustup set override nightly
+rustup override set nightly
 ```
 
 You will need to set up a local [PostgreSQL](https://www.postgresql.org/) server for the backend to connect to. Connection info (port, host, user, database name) are provided through environment variables.
