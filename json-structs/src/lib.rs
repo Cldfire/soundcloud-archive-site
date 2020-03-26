@@ -1,4 +1,30 @@
 use serde_derive::{Deserialize, Serialize};
+use orange_zest::events::*;
+
+/// The events sent via Server Sent Events are the only things not in this file.
+///
+/// To see their definitions, go to https://github.com/Cldfire/orange-zest/blob/master/src/events.rs
+/// 
+/// Those structs contain some different layouts for tracks and playlists compared
+/// to what I have in this file. Two other things you'll have to look at:
+/// 
+/// * Track, https://github.com/Cldfire/orange-zest/blob/master/src/api/common.rs
+/// * PlaylistMeta, https://github.com/Cldfire/orange-zest/blob/master/src/api/playlists.rs
+/// 
+/// It's a huge hassle to convert those types to the types in this file, so I
+/// left them as-is. I may change that in the future.
+/// 
+/// Basically, get the events, dump the json, look at it, figure out how to
+/// access it. I'm always available for questions.
+/// 
+/// Note that all events are sent with an event name of "update". This means you
+/// will need to add a listener for that event. See
+/// https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
+#[derive(Serialize, Debug)]
+pub enum SseEvent<'a> {
+    LikesScrapingEvent(LikesZestingEvent),
+    PlaylistsScrapingEvent(PlaylistsZestingEvent<'a>)
+}
 
 /// Post this from the web client to provide credentials with which to get data
 /// from SoundCloud with for a specific user.

@@ -11,6 +11,8 @@ use rocket::response::Responder;
 use json_structs::*;
 use dotenv::dotenv;
 use postgres::{Client, NoTls};
+use hyper_sse::Server;
+use lazy_static::lazy_static;
 
 use database::*;
 
@@ -21,6 +23,10 @@ use std::thread;
 use std::collections::HashSet;
 
 struct ArgonSecretKey(String);
+
+lazy_static! {
+    static ref SSE: Server<i32> = Server::new();
+}
 
 // Returns a path to the directory where the frontend files are located
 fn frontend_dir() -> PathBuf {
@@ -159,6 +165,19 @@ fn auth_creds(user: User, db: State<DbClient>, auth_creds: Json<AuthCredentials>
     user.store_sc_credentials(&mut client, &auth_creds)
 }
 
+/// Route used to get an auth token to register a client for SSE.
+/// 
+/// The general process for getting SSE is as follows:
+/// 
+/// * Log in to a user account
+/// * Make a get request to this route
+/// * Use the received auth token to create an eventsource as follows:
+///     * var evtSource = new EventSource('http://[::1]:3000/push/<user_id of logged in user>?<token here>');
+#[get("/sse-auth-token")]
+fn sse_auth_token(user: User) -> Result<String, Error> {
+    Ok(SSE.generate_auth_token(Some(user.user_id))?)
+}
+
 /// Tell the backend do scrape all available data from SoundCloud for the logged-in
 /// user.
 ///
@@ -172,6 +191,9 @@ fn auth_creds(user: User, db: State<DbClient>, auth_creds: Json<AuthCredentials>
 ///
 /// If the query parameters are not specified, this route scrapes all available
 /// info.
+/// 
+/// SSE events are sent to the client if you have registered to receive them. All
+/// events are sent with an event name of "update".
 #[post("/do-scraping?<num_recent_likes>&<num_recent_playlists>")]
 fn do_scraping(
     user: User,
@@ -197,8 +219,22 @@ fn do_scraping(
         thread::spawn(move || -> Result<(), Error> {
             let zester = orange_zest::Zester::new(oauth_token, client_id)?;
 
-            let likes = zester.likes(num_recent_likes, |_| {})?;
-            let playlists = zester.playlists(num_recent_playlists, |_| {})?;
+            let likes = zester.likes(num_recent_likes, |e| {
+                // We don't really care about errors here
+                let _ = SSE.push(
+                    user.user_id,
+                    "update",
+                    &SseEvent::LikesScrapingEvent(e)
+                );
+            })?;
+            let playlists = zester.playlists(num_recent_playlists, |e| {
+                // We don't really care about errors here
+                let _ = SSE.push(
+                    user.user_id,
+                    "update",
+                    &SseEvent::PlaylistsScrapingEvent(e)
+                );
+            })?;
 
             {
                 let mut conn = db.lock().unwrap();
@@ -357,6 +393,7 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
             .mount("/", StaticFiles::from(frontend_dir()))
             .mount("/api", routes![
                 auth_creds,
+                sse_auth_token,
                 do_scraping,
                 liked_tracks,
                 track_info,
@@ -376,6 +413,7 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
 
 fn main() -> Result<(), Error> {
     dotenv().ok();
+    SSE.spawn("[::1]:3000".parse().unwrap());
 
     // Rocket pretty prints the error on drop if one occurs
     let _ = rocket(postgresql_client()?)?.launch();

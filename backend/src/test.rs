@@ -6,6 +6,7 @@ use crate::create_tables;
 use rocket::http::{Status, StatusClass, ContentType};
 use std::process::Command;
 use dotenv::dotenv;
+use sse_client::EventSource;
 use crate::*;
 
 fn test_client() -> Result<Client, Error> {
@@ -16,6 +17,37 @@ fn test_client() -> Result<Client, Error> {
     create_tables(&mut client)?;
 
     Ok(client)
+}
+
+// Quickly set up a test user with SC auth if credentials are available
+//
+// Returns the RegisterInfo used to set the user up with.
+fn setup_test_user(client: &HttpClient) -> Result<RegisterInfo, Error> {
+    let rinfo = RegisterInfo {
+        username: "testusername".into(),
+        password: "testpass".into()
+    };
+
+    let response = client
+        .post("/api/register")
+        .header(ContentType::JSON)
+        .body(serde_json::to_string(&rinfo).unwrap())
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
+
+    let auth_creds = AuthCredentials {
+        oauth_token: env::var("SC_OAUTH_TOKEN").unwrap(),
+        client_id: env::var("SC_CLIENT_ID").unwrap()
+    };
+
+    let response = client
+        .post("/api/auth-creds")
+        .header(ContentType::JSON)
+        .body(serde_json::to_string(&auth_creds).unwrap())
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
+
+    Ok(rinfo)
 }
 
 #[test]
@@ -220,33 +252,31 @@ fn cannot_create_with_same_username() -> Result<(), Error> {
 
 #[test]
 #[ignore]
-fn scraping_and_info_retrieval() -> Result<(), Error> {
+fn entire_flow_live_site() -> Result<(), Error> {
     let client = HttpClient::new(rocket(test_client()?)?).unwrap();
     let db = client.rocket().state::<DbClient>().unwrap();
+    SSE.spawn("[::1]:3000".parse().unwrap());
+    let rinfo = setup_test_user(&client)?;
 
-    let rinfo = RegisterInfo {
-        username: "testusername".into(),
-        password: "testpass".into()
-    };
+    let mut response = client
+        .get("/api/me")
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
+    let user_id = serde_json::from_str::<UserInfo>(&response.body_string().unwrap())?.user_id;
 
-    let response = client
-        .post("/api/register")
-        .header(ContentType::JSON)
-        .body(serde_json::to_string(&rinfo).unwrap())
+    let mut response = client
+        .get("/api/sse-auth-token")
         .dispatch();
     assert_eq!(response.status().class(), StatusClass::Success);
 
-    let auth_creds = AuthCredentials {
-        oauth_token: env::var("SC_OAUTH_TOKEN").unwrap(),
-        client_id: env::var("SC_CLIENT_ID").unwrap()
-    };
+    let es = EventSource::new(
+        &format!("http://[::1]:3000/push/{}?{}", user_id, response.body_string().unwrap())
+    ).unwrap();
 
-    let response = client
-        .post("/api/auth-creds")
-        .header(ContentType::JSON)
-        .body(serde_json::to_string(&auth_creds).unwrap())
-        .dispatch();
-    assert_eq!(response.status().class(), StatusClass::Success);
+    es.add_event_listener("update", |msg| {
+        let sse_event: serde_json::Value = serde_json::from_str(&msg.data).unwrap();
+        println!("Event: {:?}", sse_event);
+    });
 
     let num_recent_likes: i64 = 10;
     let num_recent_playlists: i64 = 2;

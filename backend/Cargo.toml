@@ -9,9 +9,16 @@ edition = "2018"
 [dependencies]
 rocket = { git = "https://github.com/SergioBenitez/Rocket.git", rev = "dfc9e9aab01d349da32c52db393e35b7fffea63c" }
 rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket.git", rev = "dfc9e9aab01d349da32c52db393e35b7fffea63c" }
+# had to fork and update libhydrogen dep
+hyper-sse = { git = "https://github.com/Cldfire/hyper-sse.git" }
+lazy_static = "1"
 serde_json = "1.0"
 postgres = "0.17"
 dotenv = "0.15"
-argonautica = "0.2.0"
+# had to fork and update bindgen dep
+argonautica = { git = "https://github.com/Cldfire/argonautica.git" }
 json-structs = { path = "../json-structs" }
 orange-zest = { git = "https://github.com/Cldfire/orange-zest.git" }
+
+[dev-dependencies]
+sse-client = "1.1.1"
