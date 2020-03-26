@@ -258,17 +258,23 @@ fn entire_flow_live_site() -> Result<(), Error> {
     SSE.spawn("[::1]:3000".parse().unwrap());
     let rinfo = setup_test_user(&client)?;
 
+    // This route can be used to get the user_id of the logged in user (something
+    // you will need to store in the frontend for later use)
     let mut response = client
         .get("/api/me")
         .dispatch();
     assert_eq!(response.status().class(), StatusClass::Success);
     let user_id = serde_json::from_str::<UserInfo>(&response.body_string().unwrap())?.user_id;
 
+    // This route gives you an auth token with which to create an EventSource to
+    // receive SSE events about likes and playlist download progress
     let mut response = client
         .get("/api/sse-auth-token")
         .dispatch();
     assert_eq!(response.status().class(), StatusClass::Success);
 
+    // Here I'm creating an EventSource to test with. You'll do something similar
+    // in JS
     let es = EventSource::new(
         &format!("http://[::1]:3000/push/{}?{}", user_id, response.body_string().unwrap())
     ).unwrap();
@@ -278,9 +284,19 @@ fn entire_flow_live_site() -> Result<(), Error> {
         println!("Event: {:?}", sse_event);
     });
 
+    // I'm limiting the amount of data scraped here to make the test faster
+    //
+    // You might want to start out doing this on the frontend to avoid
+    // over-scraping soundcloud. Have it scrape everything when you're done
+    // and you know things are working
+    //
+    // Or better yet, let the user choose ;)
     let num_recent_likes: i64 = 10;
     let num_recent_playlists: i64 = 2;
 
+    // This route allows you to kick off the scraping process on the backend
+    //
+    // Use SSE to know when scraping is done. This route responds immediately
     let response = client
         .post(format!(
             "/api/do-scraping?num_recent_likes={}&num_recent_playlists={}",
@@ -306,7 +322,7 @@ fn entire_flow_live_site() -> Result<(), Error> {
         assert_eq!(loaded_user.playlist_ids.len() as i64, num_recent_playlists);
     }
 
-    // Likes and tracks stuff
+    // This is how you access likes / track information after scraping has finished
     let mut response = client
         .get("/api/liked-tracks")
         .dispatch();
@@ -323,7 +339,7 @@ fn entire_flow_live_site() -> Result<(), Error> {
     let track_info: TrackInfoLong = serde_json::from_reader(response.body().unwrap().into_inner())?;
     assert_eq!(track_info.brief_info.track_id, tracks_brief[0].track_id);
 
-    // Playlist stuff
+    // This is how you access playlist information after scraping has finished
     let mut response = client
         .get("/api/liked-and-owned-playlists")
         .dispatch();
