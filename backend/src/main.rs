@@ -13,6 +13,7 @@ use dotenv::dotenv;
 use postgres::{Client, NoTls};
 use hyper_sse::Server;
 use lazy_static::lazy_static;
+use serde_derive::Serialize;
 
 use database::*;
 
@@ -35,13 +36,17 @@ fn frontend_dir() -> PathBuf {
 }
 
 /// The error type used throughout the binary
-#[derive(Debug)]
+/// 
+/// Whenever an error occurs within a route, you'll get a response with
+/// a status code of 500 (internal server error) and the body set to a JSON
+/// payload of this enum.
+#[derive(Debug, Serialize)]
 pub enum Error {
-    IoErr(std::io::Error),
+    IoErr(#[serde(skip_serializing)] std::io::Error),
     /// An error encountered while working with password hashes
-    HashError(argonautica::Error),
-    PostgresErr(postgres::error::Error),
-    JsonErr(serde_json::Error),
+    HashError(#[serde(skip_serializing)] argonautica::Error),
+    PostgresErr(#[serde(skip_serializing)] postgres::error::Error),
+    JsonErr(#[serde(skip_serializing)] serde_json::Error),
     OrangeZestErr(orange_zest::Error),
     /// An attempt was made to create a user given details that already exist
     UserAlreadyExists,
@@ -52,9 +57,12 @@ pub enum Error {
 }
 
 impl<'r> Responder<'r> for Error {
-    fn respond_to(self, _req: &rocket::request::Request) -> rocket::response::Result<'r> {
-            eprintln!("Response was a non-`Responder` `Err`: {:?}.", self);
-            Err(Status::InternalServerError)
+    fn respond_to(self, req: &rocket::request::Request) -> rocket::response::Result<'r> {
+        eprintln!("Response was a non-`Responder` `Err`: {:?}.", &self);
+        Json(self).respond_to(req).map(|mut r| {
+            r.set_status(Status::InternalServerError);
+            r
+        })
     }
 }
 
@@ -83,8 +91,6 @@ impl From<orange_zest::Error> for Error {
 }
 
 /// Route used to create a new user
-// TODO: right now my error type does not implement responder so returning an error
-// here returns a 500 to the client and logs the error to the console
 #[post("/register", format = "json", data = "<reg_info>")]
 fn register(
     mut cookies: Cookies,
@@ -149,7 +155,6 @@ fn not_logged_in_post(_whatever: std::path::PathBuf) -> status::Custom<()> {
 }
 
 /// A "catch-all" to redirect path requests to the index since we are building a SPA
-// TODO: if you need requests to be directed at a different file, change this accordingly
 #[catch(404)]
 fn not_found() -> NamedFile {
     NamedFile::open(frontend_dir().join("index.html")).unwrap()
@@ -216,9 +221,9 @@ fn do_scraping(
     }
 
     if let (Some(oauth_token), Some(client_id)) = (user.sc_oauth_token.clone(), user.sc_client_id.clone()) {
-        thread::spawn(move || -> Result<(), Error> {
-            let zester = orange_zest::Zester::new(oauth_token, client_id)?;
+        let zester = orange_zest::Zester::new(oauth_token, client_id)?;
 
+        thread::spawn(move || -> Result<(), Error> {
             let likes = zester.likes(num_recent_likes, |e| {
                 // We don't really care about errors here
                 let _ = SSE.push(

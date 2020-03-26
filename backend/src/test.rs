@@ -6,6 +6,7 @@ use crate::create_tables;
 use rocket::http::{Status, StatusClass, ContentType};
 use std::process::Command;
 use dotenv::dotenv;
+use serde_json::Value;
 use sse_client::EventSource;
 use crate::*;
 
@@ -48,6 +49,36 @@ fn setup_test_user(client: &HttpClient) -> Result<RegisterInfo, Error> {
     assert_eq!(response.status().class(), StatusClass::Success);
 
     Ok(rinfo)
+}
+
+#[test]
+fn error_json() -> Result<(), Error> {
+    let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+    setup_test_user(&client)?;
+
+    let auth_creds = AuthCredentials {
+        oauth_token: "bla".into(),
+        client_id: "bla2".into()
+    };
+
+    // Set sc credentials to something invalid
+    let response = client
+        .post("/api/auth-creds")
+        .header(ContentType::JSON)
+        .body(serde_json::to_string(&auth_creds).unwrap())
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
+
+    // Try to do scraping, observe 500 status code and JSON error payload
+    let mut response = client
+        .post("/api/do-scraping?num_recent_likes=1&num_recent_playlists=1")
+        .dispatch();
+
+    assert_eq!(response.status().class(), StatusClass::ServerError);
+    let err: Value = serde_json::from_str(&response.body_string().unwrap())?;
+    assert_eq!(err["OrangeZestErr"]["HttpError"].as_i64().unwrap(), 401);
+
+    Ok(())
 }
 
 #[test]

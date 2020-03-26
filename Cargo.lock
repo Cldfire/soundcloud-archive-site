@@ -96,6 +96,8 @@ dependencies = [
  "postgres",
  "rocket",
  "rocket_contrib",
+ "serde",
+ "serde_derive",
  "serde_json",
  "sse-client",
 ]
