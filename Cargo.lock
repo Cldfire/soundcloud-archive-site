@@ -809,7 +809,7 @@ dependencies = [
 [[package]]
 name = "hyper-sse"
 version = "0.1.0"
-source = "git+https://github.com/Cldfire/hyper-sse.git#d38ff94acda65d1205d576b890d9d861f8f6b228"
+source = "git+https://github.com/Cldfire/hyper-sse.git#afa834ed3fc0510a33e069bbfcfd2c5be3137880"
 dependencies = [
  "base64 0.12.0",
  "futures 0.1.29",
@@ -1180,7 +1180,7 @@ checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 [[package]]
 name = "orange-zest"
 version = "0.1.0"
-source = "git+https://github.com/Cldfire/orange-zest.git#15eb6e391e4b22ab1913a827fa334e2ffaf12eac"
+source = "git+https://github.com/Cldfire/orange-zest.git#2839f0c87d63815bce6c4a2efa8187c08ec534a1"
 dependencies = [
  "serde",
  "serde_derive",
