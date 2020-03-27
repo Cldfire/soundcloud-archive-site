@@ -52,6 +52,72 @@ fn setup_test_user(client: &HttpClient) -> Result<RegisterInfo, Error> {
 }
 
 #[test]
+fn clear_liked_tracks() -> Result<(), Error> {
+    let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+    let db = client.rocket().state::<DbClient>().unwrap();
+    let rinfo = setup_test_user(&client)?;
+
+    {
+        let mut conn = db.lock().unwrap();
+        let mut user = User::load_username(&mut conn, &rinfo.username)?;
+    
+        let ids = vec![1, 2, 3];
+        user.update_liked_track_ids(&mut conn, ids.clone())?;
+        user = User::load_username(&mut conn, &rinfo.username)?;
+        assert_eq!(user.liked_track_ids, ids);
+    }
+
+    let response = client
+        .post("/api/clear-liked-tracks")
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
+
+    {
+        let mut conn = db.lock().unwrap();
+        let user = User::load_username(&mut conn, &rinfo.username)?;
+
+        let empty_vec: Vec<i64> = vec![];
+        assert_eq!(user.liked_track_ids, empty_vec);
+    }
+
+    
+    Ok(())
+}
+
+#[test]
+fn clear_playlists() -> Result<(), Error> {
+    let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+    let db = client.rocket().state::<DbClient>().unwrap();
+    let rinfo = setup_test_user(&client)?;
+
+    {
+        let mut conn = db.lock().unwrap();
+        let mut user = User::load_username(&mut conn, &rinfo.username)?;
+    
+        let ids = vec![1, 2, 3];
+        user.update_playlist_ids(&mut conn, ids.clone())?;
+        user = User::load_username(&mut conn, &rinfo.username)?;
+        assert_eq!(user.playlist_ids, ids);
+    }
+
+    let response = client
+        .post("/api/clear-playlists")
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
+
+    {
+        let mut conn = db.lock().unwrap();
+        let user = User::load_username(&mut conn, &rinfo.username)?;
+
+        let empty_vec: Vec<i64> = vec![];
+        assert_eq!(user.playlist_ids, empty_vec);
+    }
+
+    
+    Ok(())
+}
+
+#[test]
 fn error_json() -> Result<(), Error> {
     let client = HttpClient::new(rocket(test_client()?)?).unwrap();
     setup_test_user(&client)?;

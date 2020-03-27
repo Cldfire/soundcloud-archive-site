@@ -389,6 +389,26 @@ fn playlist_info(_user: User, db: State<DbClient>, id: i64) -> Result<Json<Playl
     }))
 }
 
+/// Clear the logged in user's liked tracks
+/// 
+/// This does not delete the liked tracks from the database. It clears the list
+/// of liked track IDs in the users table.
+#[post("/clear-liked-tracks")]
+fn clear_liked_tracks(user: User, db: State<DbClient>) -> Result<(), Error> {
+    let mut conn = db.lock().unwrap();
+    user.update_liked_track_ids(&mut conn, vec![])
+}
+
+/// Clear the logged in user's playlists
+/// 
+/// This does not delete playlists or tracks from the database. It clears the list
+/// of playlist IDs in the users table.
+#[post("/clear-playlists")]
+fn clear_playlists(user: User, db: State<DbClient>) -> Result<(), Error> {
+    let mut conn = db.lock().unwrap();
+    user.update_playlist_ids(&mut conn, vec![])
+}
+
 /// Create a Rocket instance given a PostgreSQL client.
 fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
     Ok(
@@ -404,6 +424,8 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
                 track_info,
                 liked_and_owned_playlists,
                 playlist_info,
+                clear_liked_tracks,
+                clear_playlists,
                 register,
                 login,
                 logout,
