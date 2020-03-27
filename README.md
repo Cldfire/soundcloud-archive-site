@@ -43,6 +43,8 @@ POSTGRES_HOST="..."
 ARGON_SECRET_KEY="..."
 ```
 
+See [dotenv](https://github.com/dotenv-rs/dotenv) for more.
+
 Also, optionally provide the following for use by some tests (run via `cargo test -- --test-threads 1 --ignored`):
 
 ```
@@ -50,7 +52,7 @@ SC_CLIENT_ID="..."
 SC_OAUTH_TOKEN="..."
 ```
 
-See [dotenv](https://github.com/dotenv-rs/dotenv) for more.
+See the [orange-zest README](https://github.com/Cldfire/orange-zest#obtaining-soundcloud-auth-credentials) for details on obtaining these values.
 
 Finally, you'll need [pg_tmp](https://github.com/eradman/ephemeralpg) installed and available for unit tests to be able to run.
 
