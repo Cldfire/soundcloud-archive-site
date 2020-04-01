@@ -11,6 +11,7 @@
     </head>
     <script>
 async function submit_NewUser(event){
+    event.preventDefault(); // prevent form from being sent to server
     
     const response = await fetch(
         "/api/register",
@@ -28,31 +29,30 @@ async function submit_NewUser(event){
     );    
     if (response.ok) {
         const userInfo = await response.json();
-        signedIn.set(true);
-        userId.set(userInfo.user_id);
-        navigateTo('/')
+        alert(JSON.stringify(userInfo)); // remove this, just for you to see
+        // store somewhere on the frontend that we are signed in
+        // store the user's ID somewhere for future use
+        window.location.replace("SC_Oauth.html");
     } else {
-        // TODO: handle potential errors / issues
-        // should reply with json payload
-        alert("Send Fail");
+        alert(await response.text()); // the response will be a JSON error
     }
-    window.location.replace("SC_Oauth.html");
+
 }
     </script>
     <body>
-        <form on:submit|preventdefault={submit_NewUser()} method="POST">
+        <form onsubmit="submit_NewUser(event)">
             <div>
-                <input placeholder="Username" id="UsernameNewUser">
+                <input placeholder="Username" id="UsernameNewUser"/>
             </div>
             <div>
-                <input type="password" id="Password1" placeholder="Password">
+                <input type="password" id="Password1" placeholder="Password"/>
             </div>
             <div>
-                <input type="password" id="Password2" placeholder="Retype Password">
+                <input type="password" id="Password2" placeholder="Retype Password"/>
             </div>
             <span style="padding:5px"></span>
             <div>
-                <button>Submit</button>
+                <button type="submit">Submit</button>
             </div>
         </form>
     </body>
