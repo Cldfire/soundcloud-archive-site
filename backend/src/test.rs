@@ -322,7 +322,6 @@ fn cannot_create_with_same_username() -> Result<(), Error> {
         username: "testusername".into(),
         password: "testpass".into()
     };
-
     let rinfo2 = RegisterInfo {
         username: "testusername".into(),
         password: "testpass2".into()
@@ -343,6 +342,39 @@ fn cannot_create_with_same_username() -> Result<(), Error> {
         .body(serde_json::to_string(&rinfo2).unwrap())
         .dispatch();
     assert_eq!(response.status().class(), StatusClass::ServerError);
+
+    Ok(())
+}
+
+#[test]
+fn can_create_with_same_password() -> Result<(), Error> {
+    let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+    
+    let common_password = "testpass";
+    let rinfo = RegisterInfo {
+        username: "someusername".into(),
+        password: common_password.into()
+    };
+    let rinfo2 = RegisterInfo {
+        username: "someotherusername".into(),
+        password: common_password.into()
+    };
+
+    // Register first user
+    let response = client
+        .post("/api/register")
+        .header(ContentType::JSON)
+        .body(serde_json::to_string(&rinfo).unwrap())
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
+
+    // Register second
+    let response = client
+        .post("/api/register")
+        .header(ContentType::JSON)
+        .body(serde_json::to_string(&rinfo2).unwrap())
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
 
     Ok(())
 }
