@@ -1,7 +1,7 @@
 <script>
     import { Link } from 'yrv';
     import { get } from 'svelte/store';
-    import { onDestroy, onMount } from 'svelte';
+    import { onDestroy } from 'svelte';
 
     import TracksList from './TracksList.svelte'
     import PlaylistsList from './PlaylistsList.svelte'
@@ -43,7 +43,7 @@
         ss = new ScrapingState();
 
         const response = await fetch(
-            "/api/do-scraping?num_recent_likes=10&num_recent_playlists=2",
+            "/api/do-scraping?num_recent_likes=500&num_recent_playlists=5",
             {
                 method: 'GET',
                 credentials: 'same-origin'
@@ -52,6 +52,38 @@
 
         if (response.ok) {
             alert("Started scraping process");
+        } else {
+            alert(await response.text());
+        }
+    }
+
+    async function clearLikedTracks() {
+        const response = await fetch(
+            "/api/clear-liked-tracks",
+            {
+                method: 'GET',
+                credentials: 'same-origin'
+            }
+        );
+
+        if (response.ok) {
+            getLikedTracks();
+        } else {
+            alert(await response.text());
+        }
+    }
+
+    async function clearPlaylists() {
+        const response = await fetch(
+            "/api/clear-playlists",
+            {
+                method: 'GET',
+                credentials: 'same-origin'
+            }
+        );
+
+        if (response.ok) {
+            getLikedAndOwnedPlaylists();
         } else {
             alert(await response.text());
         }
@@ -106,7 +138,7 @@
                             .MoreLikesInfoDownloaded
                             .count;
                     }
-                } else {
+                } else if (data.PlaylistsScrapingEvent) {
                     let d = data.PlaylistsScrapingEvent;
 
                     if (d.NumPlaylistInfoToDownload) {
@@ -116,13 +148,15 @@
                     } else if (d.FinishPlaylistInfoDownload) {
                         ss.numPlaylistsDownloaded += 1;
                     }
+                } else if (data == "Complete") {
+                    getLikedTracks();
+                    getLikedAndOwnedPlaylists();
                 }
 
                 if (
                     !ss.finishedDownloadingTracks &&
                     ss.numTracksToDownload == ss.numTracksDownloaded
                 ) {
-                    getLikedTracks();
                     ss.finishedDownloadingTracks = true;
                 }
 
@@ -130,7 +164,6 @@
                     !ss.finishedDownloadingPlaylists &&
                     ss.numPlaylistsToDownload == ss.numPlaylistsDownloaded
                 ) {
-                    getLikedAndOwnedPlaylists();
                     ss.finishedDownloadingPlaylists = true;
                 }
             });
@@ -157,6 +190,8 @@
     <br>
 
     <button on:click="{startScraping}">Scrape SoundCloud</button>
+    <button on:click="{clearLikedTracks}">Delete Liked Tracks</button>
+    <button on:click="{clearPlaylists}">Delete Playlists</button>
 
     <TracksList tracks={likedTracks}/>
     <PlaylistsList playlists={likedAndOwnedPlaylists}/>

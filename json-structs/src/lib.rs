@@ -23,7 +23,9 @@ use orange_zest::events::*;
 #[derive(Serialize, Debug)]
 pub enum SseEvent<'a> {
     LikesScrapingEvent(LikesZestingEvent),
-    PlaylistsScrapingEvent(PlaylistsZestingEvent<'a>)
+    PlaylistsScrapingEvent(PlaylistsZestingEvent<'a>),
+    /// Scraping has finished
+    Complete
 }
 
 /// Post this from the web client to provide credentials with which to get data

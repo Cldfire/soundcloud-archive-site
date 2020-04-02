@@ -9,6 +9,6 @@
     <h2>Liked Tracks:</h2>
 {/if}
 
-<VirtualList items={tracks} let:item>
+<VirtualList height="300px" items={tracks} let:item>
   <p>{item.title}</p>
 </VirtualList>

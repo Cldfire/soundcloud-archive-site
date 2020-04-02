@@ -68,7 +68,7 @@ fn clear_liked_tracks() -> Result<(), Error> {
     }
 
     let response = client
-        .post("/api/clear-liked-tracks")
+        .get("/api/clear-liked-tracks")
         .dispatch();
     assert_eq!(response.status().class(), StatusClass::Success);
 
@@ -101,7 +101,7 @@ fn clear_playlists() -> Result<(), Error> {
     }
 
     let response = client
-        .post("/api/clear-playlists")
+        .get("/api/clear-playlists")
         .dispatch();
     assert_eq!(response.status().class(), StatusClass::Success);
 
