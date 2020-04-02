@@ -10,9 +10,39 @@
         <script src="index.js"></script>
         <script src="Global.js"></script>
     </head>
+    <script>
+async function login(event){
+    event.preventDefault(); // prevent form from being sent to server
+    
+    const response = await fetch(
+        "/api/login",
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                password: event.target.Username.value,
+                username: event.target.Password.value,
+            })
+        }
+    );    
+    if (response.ok) {
+        const userInfo = await response.json();
+        // alert(JSON.stringify(userInfo)); // remove this, just for you to see
+        // store somewhere on the frontend that we are signed in
+        // store the user's ID somewhere for future use
+        
+    } else {
+        alert(await response.text()); // the response will be a JSON error
+    }
+}
+
+    </script>
     <body>
         <header></header>
-        <form>
+        <form onsubmit=login(event)>
             <input id="Username" type="text" placeholder="Username">
             <input type="password" id="Password" placeholder="Password">
             <button type="submit" value="Submit" id="Submit" data-pg-name="Submit" title="Submit" name="Submit">Submit</button>
