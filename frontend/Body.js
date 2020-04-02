@@ -1,3 +1,0 @@
-function body_set(){
-
-}

@@ -17,7 +17,7 @@ use serde_derive::Serialize;
 
 use database::*;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::env;
 use std::thread;
@@ -29,10 +29,18 @@ lazy_static! {
     static ref SSE: Server<i32> = Server::new();
 }
 
-// Returns a path to the directory where the frontend files are located
-fn frontend_dir() -> PathBuf {
-    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir.parent().unwrap().join("frontend/")
+#[cfg(feature = "deployable")]
+macro_rules! root_dir {
+    () => {
+        PathBuf::from("./")
+    };
+}
+
+#[cfg(not(feature = "deployable"))]
+macro_rules! root_dir {
+    () => {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap()
+    };
 }
 
 /// The error type used throughout the binary
@@ -157,7 +165,7 @@ fn not_logged_in_post(_whatever: std::path::PathBuf) -> status::Custom<()> {
 /// A "catch-all" to redirect path requests to the index since we are building a SPA
 #[catch(404)]
 fn not_found() -> NamedFile {
-    NamedFile::open(frontend_dir().join("index.html")).unwrap()
+    NamedFile::open(root_dir!().join("frontend/public/index.html")).unwrap()
 }
 
 /// Route used to provide auth credentials (OAuth token and Client ID).
@@ -411,11 +419,16 @@ fn clear_playlists(user: User, db: State<DbClient>) -> Result<(), Error> {
 
 /// Create a Rocket instance given a PostgreSQL client.
 fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
+    #[cfg(feature = "deployable")]
+    let static_files_dir = root_dir!().join("static");
+    #[cfg(not(feature = "deployable"))]
+    let static_files_dir = root_dir!().join("frontend/public");
+
     Ok(
         rocket::ignite()
             .manage(Arc::new(Mutex::new(client)))
             .manage(ArgonSecretKey(env::var("ARGON_SECRET_KEY").unwrap()))
-            .mount("/", StaticFiles::from(frontend_dir()))
+            .mount("/", StaticFiles::from(static_files_dir))
             .mount("/api", routes![
                 auth_creds,
                 sse_auth_token,
