@@ -4,7 +4,7 @@ A website that provides a simple interface to store an archive of your [SoundClo
 
 ## Frontend (started by Jarek, will be finished by Ian)
 
-The frontend is written in JS with the Svelte 3 framework. From the `frontend` folder, npm install and then npm run watch.
+The frontend is written in JS with the Svelte 3 framework. From the `frontend` folder, `npm install` and then `npm run watch`.
 
 (Make sure you also start the backend seperately. Live reload should be working.)
 
