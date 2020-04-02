@@ -2,19 +2,11 @@
 
 A website that provides a simple interface to store an archive of your [SoundCloud](https://soundcloud.com) user data, allowing you both to browse / retrieve the data and to view various statistics.
 
-## Frontend (by Ian)
+## Frontend (started by Jarek, will be finished by Ian)
 
-TODO: Ian will put relevant info here as he builds the frontend
+The frontend is written in JS with the Svelte 3 framework. From the `frontend` folder, npm install and then npm run watch.
 
-(Temporary info): The frontend should go in the `frontend` folder. Feel free to use whatever you want.
-
-If you decide to use a Rust framework that compiles to WASM, I've split the struct definitions for the JSON that will be used to communicate between the client and the server out into a separate crate (`json-structs`). You can depend on it and `serde_json` to quickly and easily deserialize the JSON into typed structs.
-
-If you do decide to go this route, make sure you create a new Rust crate for the `frontend` and add it to the workspace (see the `Cargo.toml` at the root).
-
-If not, just work with the JSON however you would normally.
-
-If you want to see an example of something I've done in the past with Svelte, see [here](https://github.com/Cldfire/self-host-social).
+(Make sure you also start the backend seperately. Live reload should be working.)
 
 ## Backend (by Jarek)
 
