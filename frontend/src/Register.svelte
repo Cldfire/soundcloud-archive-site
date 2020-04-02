@@ -1,7 +1,7 @@
 <script>
     import { navigateTo } from 'yrv';
 
-    import { signedIn, userId } from './stores.js';
+    import { getSseToken, updateStoresAfterLogin } from './util.js';
 
     async function handleSubmit(event) {
         if(!event.target.checkValidity()) {
@@ -24,10 +24,7 @@
         );
 
         if (response.ok) {
-            const userInfo = await response.json();
-
-            signedIn.set(true);
-            userId.set(userInfo.user_id);
+            await updateStoresAfterLogin(await response.json(), await getSseToken());
             navigateTo('/')
         } else {
             alert(await response.text());

@@ -142,6 +142,7 @@ fn login(
     }
 }
 
+// TODO: stop SSE connection
 #[get("/logout")]
 fn logout(mut cookies: Cookies) -> Status {
     cookies.remove_private(Cookie::named("user_id"));

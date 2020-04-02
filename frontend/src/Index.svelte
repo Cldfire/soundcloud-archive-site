@@ -1,13 +1,28 @@
 <script>
     import { Link } from 'yrv';
     import { get } from 'svelte/store';
+    import { onDestroy, onMount } from 'svelte';
 
     import TracksList from './TracksList.svelte'
     import PlaylistsList from './PlaylistsList.svelte'
-    import { signedIn, userId } from './stores.js';
+    import { signedIn, evtSource } from './stores.js';
+    import { updateStoresAfterLogout } from './util.js'
+
+    class ScrapingState {
+        constructor() {
+            this.numTracksToDownload = -1;
+            this.numPlaylistsToDownload = -1;
+            this.numTracksDownloaded = 0;
+            this.numPlaylistsDownloaded = 0;
+
+            this.finishedDownloadingTracks = false;
+            this.finishedDownloadingPlaylists = false;
+        }
+    }
 
     var likedTracks = [];
     var likedAndOwnedPlaylists = [];
+    var ss = new ScrapingState();
 
     async function logOut() {
         const response = await fetch(
@@ -18,14 +33,15 @@
             }
         );
         if (response.ok) {
-            signedIn.set(false);
-            userId.set(-1);
+            await updateStoresAfterLogout();
         } else {
             alert(await response.text());
         }
     }
 
     async function startScraping() {
+        ss = new ScrapingState();
+
         const response = await fetch(
             "/api/do-scraping?num_recent_likes=10&num_recent_playlists=2",
             {
@@ -72,6 +88,64 @@
             alert(await response.text());
         }
     }
+
+    let unsubEvtSource = evtSource.subscribe((es) => {
+        if (es != null) {
+            es.addEventListener('update', (e) => {
+                let data = JSON.parse(e.data);
+
+                if (data.LikesScrapingEvent) {
+                    let d = data.LikesScrapingEvent;
+
+                    if (d.NumLikesInfoToDownload) {
+                        ss.numTracksToDownload = d
+                            .NumLikesInfoToDownload
+                            .num;
+                    } else if (d.MoreLikesInfoDownloaded) {
+                        ss.numTracksDownloaded += d
+                            .MoreLikesInfoDownloaded
+                            .count;
+                    }
+                } else {
+                    let d = data.PlaylistsScrapingEvent;
+
+                    if (d.NumPlaylistInfoToDownload) {
+                        ss.numPlaylistsToDownload = d
+                            .NumPlaylistInfoToDownload
+                            .num;
+                    } else if (d.FinishPlaylistInfoDownload) {
+                        ss.numPlaylistsDownloaded += 1;
+                    }
+                }
+
+                if (
+                    !ss.finishedDownloadingTracks &&
+                    ss.numTracksToDownload == ss.numTracksDownloaded
+                ) {
+                    getLikedTracks();
+                    ss.finishedDownloadingTracks = true;
+                }
+
+                if (
+                    !ss.finishedDownloadingPlaylists &&
+                    ss.numPlaylistsToDownload == ss.numPlaylistsDownloaded
+                ) {
+                    getLikedAndOwnedPlaylists();
+                    ss.finishedDownloadingPlaylists = true;
+                }
+            });
+        }
+    });
+
+    let unsubSignedIn = signedIn.subscribe((val) => {
+        if (val == true) {
+            getLikedTracks();
+            getLikedAndOwnedPlaylists();
+        }
+    });
+
+    onDestroy(unsubEvtSource);
+    onDestroy(unsubSignedIn);
 </script>
 
 {#if $signedIn}
@@ -83,15 +157,9 @@
     <br>
 
     <button on:click="{startScraping}">Scrape SoundCloud</button>
-    <br>
 
-    {#await getLikedTracks() then _}
-        <TracksList tracks={likedTracks}/>
-    {/await}
-
-    {#await getLikedAndOwnedPlaylists() then _}
-        <PlaylistsList playlists={likedAndOwnedPlaylists}/>
-    {/await}
+    <TracksList tracks={likedTracks}/>
+    <PlaylistsList playlists={likedAndOwnedPlaylists}/>
 {:else}
     <p>You are not signed in.</p>
 

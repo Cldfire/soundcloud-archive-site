@@ -6,7 +6,7 @@
     import Register from './Register.svelte';
     import Login from './Login.svelte';
     import ScCredentials from  './ScCredentials.svelte';
-    import { signedIn, userId } from './stores.js';
+    import { getSseToken, updateStoresAfterLogin } from './util.js'
 
     onMount(async () => {
         const response = await fetch(
@@ -18,10 +18,7 @@
         );
 
         if (response.ok) {
-            const userInfo = await response.json();
-
-            signedIn.set(true);
-            userId.set(userInfo.user_id);
+            await updateStoresAfterLogin(await response.json(), await getSseToken());
         }
     });
 </script>
