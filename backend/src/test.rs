@@ -137,7 +137,7 @@ fn error_json() -> Result<(), Error> {
 
     // Try to do scraping, observe 500 status code and JSON error payload
     let mut response = client
-        .post("/api/do-scraping?num_recent_likes=1&num_recent_playlists=1")
+        .get("/api/do-scraping?num_recent_likes=1&num_recent_playlists=1")
         .dispatch();
 
     assert_eq!(response.status().class(), StatusClass::ServerError);
@@ -314,6 +314,56 @@ fn login_flow() -> Result<(), Error> {
     Ok(())
 }
 
+// TODO: add way to create tests that do not set up database connection
+#[test]
+fn non_existent_api_route() -> Result<(), Error> {
+    let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+    setup_test_user(&client)?;
+
+    // Make request to API get route that doesn't exist
+    let mut response = client
+        .get("/api/something-that-doesnt-exist")
+        .dispatch();
+
+    assert_eq!(response.status().class(), StatusClass::ClientError);
+    let err: Value = serde_json::from_str(&response.body_string().unwrap())?;
+    assert_eq!(err.as_str().unwrap(), "NonExistentApiRoute");
+
+    // Make request to API post route that doesn't exist
+    let mut response = client
+        .post("/api/something-that-doesnt-exist")
+        .dispatch();
+
+    assert_eq!(response.status().class(), StatusClass::ClientError);
+    let err: Value = serde_json::from_str(&response.body_string().unwrap())?;
+    assert_eq!(err.as_str().unwrap(), "NonExistentApiRoute");
+
+    Ok(())
+}
+
+// Test trying to log in with a username that doesn't exist
+#[test]
+fn login_nonexistent_username() -> Result<(), Error> {
+    let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+
+    let mut response = client
+        .post("/api/login")
+        .header(ContentType::JSON)
+        .body(
+            serde_json::to_string(&RegisterInfo {
+                username: "test".into(),
+                password: "whatever".into()
+            }).unwrap()
+        )
+        .dispatch();
+    // TODO: This should technically be a StatusClass::ClientError
+    assert_eq!(response.status().class(), StatusClass::ServerError);
+    let err: Value = serde_json::from_str(&response.body_string().unwrap())?;
+    assert_eq!(err.as_str().unwrap(), "LoginFailed");
+
+    Ok(())
+}
+
 #[test]
 fn cannot_create_with_same_username() -> Result<(), Error> {
     let client = HttpClient::new(rocket(test_client()?)?).unwrap();
@@ -427,7 +477,7 @@ fn entire_flow_live_site() -> Result<(), Error> {
     //
     // Use SSE to know when scraping is done. This route responds immediately
     let response = client
-        .post(format!(
+        .get(format!(
             "/api/do-scraping?num_recent_likes={}&num_recent_playlists={}",
             num_recent_likes,
             num_recent_playlists

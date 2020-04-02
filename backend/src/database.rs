@@ -32,6 +32,21 @@ pub fn create_tables(client: &mut Client) -> Result<(), Error> {
     Ok(())
 }
 
+/// Request guard to validate request is not coming from an authenticated user.
+#[derive(Debug)]
+pub struct NotLoggedIn;
+
+impl<'a, 'r> FromRequest<'a, 'r> for NotLoggedIn {
+    type Error = Error;
+
+    fn from_request(request: &'a Request<'r>) -> request::Outcome<NotLoggedIn, Self::Error> {
+        match request.cookies().get_private("user_id") {
+            Some(_) => Outcome::Forward(()),
+            None => Outcome::Success(NotLoggedIn)
+        }
+    }
+}
+
 /// Representation of a user in the database.
 ///
 /// Users have both an id (numeric) and a username (alphanumeric). The username
@@ -179,7 +194,7 @@ impl User {
 
     /// Loads the user specified by the given username from the database
     pub fn load_username(client: &mut Client, username: &str) -> Result<Self, Error> {
-        let row = client.query_one("
+        let maybe_row = client.query_opt("
             SELECT
                 user_id,
                 hash,
@@ -190,15 +205,19 @@ impl User {
                 playlist_ids
             FROM users WHERE username = $1", &[&username])?;
 
-        Ok(Self {
-            user_id: row.get(0),
-            hash: row.get(1),
-            username: row.get(2),
-            sc_oauth_token: row.get(3),
-            sc_client_id: row.get(4),
-            liked_track_ids: row.get(5),
-            playlist_ids: row.get(6)
-        })
+        if let Some(row) = maybe_row {
+            Ok(Self {
+                user_id: row.get(0),
+                hash: row.get(1),
+                username: row.get(2),
+                sc_oauth_token: row.get(3),
+                sc_client_id: row.get(4),
+                liked_track_ids: row.get(5),
+                playlist_ids: row.get(6)
+            })
+        } else {
+            Err(Error::LoginFailed)
+        }
     }
 
     /// Stores the given `AuthCredentials` in the databse for this user.

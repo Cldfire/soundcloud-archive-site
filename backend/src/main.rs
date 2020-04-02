@@ -61,12 +61,18 @@ pub enum Error {
     /// The backend did not have the auth tokens to do scraping for the requested user with
     ScAuthTokensNotPresent,
     /// Could not log in with the given `LoginInfo`
-    LoginFailed
+    LoginFailed,
+    /// Tried to access an API route that requires you to be authenticated
+    NotLoggedIn,
+    /// Tried to make a request to a route that doesn't exist
+    NonExistentApiRoute
 }
 
+// TODO: figure out how to get the console to show outcome failed when responding
+// with this
 impl<'r> Responder<'r> for Error {
     fn respond_to(self, req: &rocket::request::Request) -> rocket::response::Result<'r> {
-        eprintln!("Response was a non-`Responder` `Err`: {:?}.", &self);
+        eprintln!("Responding with Err: {:?}", &self);
         Json(self).respond_to(req).map(|mut r| {
             r.set_status(Status::InternalServerError);
             r
@@ -149,18 +155,28 @@ fn me_authed(user: User) -> Json<UserInfo> {
 }
 
 #[get("/me", rank = 2)]
-fn me() -> status::Custom<()> {
-    status::Custom(Status::Unauthorized, ())
+fn me(_nli: NotLoggedIn,) -> status::Custom<Error> {
+    status::Custom(Status::Unauthorized, Error::NotLoggedIn)
 }
 
-#[get("/<_whatever..>", rank = 20)]
-fn not_logged_in_get(_whatever: std::path::PathBuf) -> status::Custom<()> {
-    status::Custom(Status::Unauthorized, ())
+#[get("/<_whatever..>", rank = 15)]
+fn not_logged_in_get(_nli: NotLoggedIn, _whatever: std::path::PathBuf) -> status::Custom<Error> {
+    status::Custom(Status::Unauthorized, Error::NotLoggedIn)
+}
+
+#[post("/<_whatever..>", rank = 15)]
+fn not_logged_in_post(_nli: NotLoggedIn, _whatever: std::path::PathBuf) -> status::Custom<Error> {
+    status::Custom(Status::Unauthorized, Error::NotLoggedIn)
 }
 
 #[post("/<_whatever..>", rank = 20)]
-fn not_logged_in_post(_whatever: std::path::PathBuf) -> status::Custom<()> {
-    status::Custom(Status::Unauthorized, ())
+fn non_existent_api_post(_user: User, _whatever: std::path::PathBuf) -> status::Custom<Error> {
+    status::Custom(Status::BadRequest, Error::NonExistentApiRoute)
+}
+
+#[get("/<_whatever..>", rank = 20)]
+fn non_existent_api_get(_user: User, _whatever: std::path::PathBuf) -> status::Custom<Error> {
+    status::Custom(Status::BadRequest, Error::NonExistentApiRoute)
 }
 
 /// A "catch-all" to redirect path requests to the index since we are building a SPA
@@ -209,7 +225,7 @@ fn sse_auth_token(user: User) -> Result<String, Error> {
 /// 
 /// SSE events are sent to the client if you have registered to receive them. All
 /// events are sent with an event name of "update".
-#[post("/do-scraping?<num_recent_likes>&<num_recent_playlists>")]
+#[get("/do-scraping?<num_recent_likes>&<num_recent_playlists>")]
 fn do_scraping(
     user: User,
     db: State<DbClient>,
@@ -447,7 +463,9 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
                 me,
                 me_authed,
                 not_logged_in_get,
-                not_logged_in_post
+                not_logged_in_post,
+                non_existent_api_get,
+                non_existent_api_post
             ])
             .register(catchers![not_found])
     )
