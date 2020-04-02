@@ -5,6 +5,7 @@
     import Index from './Index.svelte';
     import Register from './Register.svelte';
     import Login from './Login.svelte';
+    import ScCredentials from  './ScCredentials.svelte';
     import { signedIn, userId } from './stores.js';
 
     onMount(async () => {
@@ -29,4 +30,5 @@
     <Route exact path="/" component={Index}/>
     <Route path="/register" component={Register}/>
     <Route path="/login" component={Login}/>
+    <Route path="/set-soundcloud-credentials" component={ScCredentials}/>
 </Router>

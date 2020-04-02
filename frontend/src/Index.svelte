@@ -22,8 +22,10 @@
 
 {#if $signedIn}
     <p>Hi! You are signed in.</p>
-
     <button on:click="{logOut}">Log Out</button>
+    <br>
+
+    <Link href="set-soundcloud-credentials">Set SoundCloud Credentials</Link>
 {:else}
     <p>You are not signed in.</p>
 

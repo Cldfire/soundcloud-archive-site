@@ -142,6 +142,7 @@ fn logout(mut cookies: Cookies) -> Status {
     Status::Ok
 }
 
+// TODO: add whether or not SC auth credentials have been set to UserInfo
 #[get("/me")]
 fn me_authed(user: User) -> Json<UserInfo> {
     Json(user.into())
@@ -168,12 +169,13 @@ fn not_found() -> NamedFile {
     NamedFile::open(root_dir!().join("frontend/public/index.html")).unwrap()
 }
 
-/// Route used to provide auth credentials (OAuth token and Client ID).
+/// Route used to set auth credentials (OAuth token and Client ID).
 ///
 /// You have to be logged in with an account to access this route (applies to
 /// any route with a `User` parameter).
-#[post("/auth-creds", format = "json", data = "<auth_creds>")]
-fn auth_creds(user: User, db: State<DbClient>, auth_creds: Json<AuthCredentials>) -> Result<(), Error> {
+// TODO: validate that tokens work before storing
+#[post("/set-auth-creds", format = "json", data = "<auth_creds>")]
+fn set_auth_creds(user: User, db: State<DbClient>, auth_creds: Json<AuthCredentials>) -> Result<(), Error> {
     let mut client = db.lock().unwrap();
     user.store_sc_credentials(&mut client, &auth_creds)
 }
@@ -430,7 +432,7 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
             .manage(ArgonSecretKey(env::var("ARGON_SECRET_KEY").unwrap()))
             .mount("/", StaticFiles::from(static_files_dir))
             .mount("/api", routes![
-                auth_creds,
+                set_auth_creds,
                 sse_auth_token,
                 do_scraping,
                 liked_tracks,

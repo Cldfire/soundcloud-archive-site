@@ -42,7 +42,7 @@ fn setup_test_user(client: &HttpClient) -> Result<RegisterInfo, Error> {
     };
 
     let response = client
-        .post("/api/auth-creds")
+        .post("/api/set-auth-creds")
         .header(ContentType::JSON)
         .body(serde_json::to_string(&auth_creds).unwrap())
         .dispatch();
@@ -129,7 +129,7 @@ fn error_json() -> Result<(), Error> {
 
     // Set sc credentials to something invalid
     let response = client
-        .post("/api/auth-creds")
+        .post("/api/set-auth-creds")
         .header(ContentType::JSON)
         .body(serde_json::to_string(&auth_creds).unwrap())
         .dispatch();
@@ -226,7 +226,7 @@ fn auth_creds() -> Result<(), Error> {
     let db = client.rocket().state::<DbClient>().unwrap();
 
     let response = client
-        .post("/api/auth-creds")
+        .post("/api/set-auth-creds")
         .header(ContentType::JSON)
         .body(serde_json::to_string(&AuthCredentials {
             oauth_token: "bla".into(),
@@ -253,7 +253,7 @@ fn auth_creds() -> Result<(), Error> {
     };
 
     let response = client
-        .post("/api/auth-creds")
+        .post("/api/set-auth-creds")
         .header(ContentType::JSON)
         .body(serde_json::to_string(&auth_creds).unwrap())
         .dispatch();
