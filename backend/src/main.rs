@@ -490,6 +490,36 @@ fn most_liked_artist(user: User, db: State<DbClient>) -> Result<Json<ScUserInfo>
     }))
 }
 
+/// Get the logged in user's average playback count across all of their likes
+/// 
+/// Note that this route just responds with a single numerical value in the JSON.
+#[get("/average-playback-count")]
+fn average_playback_count(user: User, db: State<DbClient>) -> Result<Json<i64>, Error> {
+    let mut conn = db.lock().unwrap();
+
+    if user.liked_track_ids.len() < 1 {
+        return Err(Error::NoLikedTracksForUser);
+    }
+
+    let result_iter = conn.query_raw("
+        SELECT playback_count
+        FROM tracks
+        WHERE track_id = ANY($1)
+    ", vec![&user.liked_track_ids as _])?;
+
+    Ok(Json(
+        result_iter
+        .map(|r| {
+            let count: i64 = r.get::<_, i64>(0);
+            Ok(count)
+        })
+        .fold((0, 0), |(sum, num_elems), n| {
+            Ok((sum + n, num_elems + 1))
+        })
+        .map(|(sum, num_elems)| sum / num_elems)?
+    ))
+}
+
 /// Create a Rocket instance given a PostgreSQL client.
 fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
     #[cfg(feature = "deployable")]
@@ -523,7 +553,8 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
                 non_existent_api_post
             ])
             .mount("/api/statistics", routes![
-                most_liked_artist
+                most_liked_artist,
+                average_playback_count
             ])
             .register(catchers![not_found])
     )
