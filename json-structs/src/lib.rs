@@ -158,3 +158,18 @@ pub struct PlaylistInfoLong {
     /// A URL to the user on SoundCloud
     pub user_permalink_url: String
 }
+
+/// Information about a SoundCloud user.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ScUserInfo {
+    /// The id of the SoundCloud user
+    pub sc_user_id: i64,
+    /// A URL to the user's profile image on SoundCloud
+    pub avatar_url: Option<String>,
+    /// The user's full name
+    pub full_name: String,
+    /// The user's display name
+    pub username: String,
+    /// A URL to the user on SoundCloud
+    pub permalink_url: String
+}

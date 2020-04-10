@@ -11,9 +11,11 @@ use rocket::response::Responder;
 use json_structs::*;
 use dotenv::dotenv;
 use postgres::{Client, NoTls};
+use postgres::fallible_iterator::FallibleIterator;
 use hyper_sse::Server;
 use lazy_static::lazy_static;
 use serde_derive::Serialize;
+
 
 use database::*;
 
@@ -21,7 +23,7 @@ use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::env;
 use std::thread;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 struct ArgonSecretKey(String);
 
@@ -65,7 +67,9 @@ pub enum Error {
     /// Tried to access an API route that requires you to be authenticated
     NotLoggedIn,
     /// Tried to make a request to a route that doesn't exist
-    NonExistentApiRoute
+    NonExistentApiRoute,
+    /// The logged-in user has no liked tracks stored for their account
+    NoLikedTracksForUser
 }
 
 // TODO: figure out how to get the console to show outcome failed when responding
@@ -442,6 +446,50 @@ fn clear_playlists(user: User, db: State<DbClient>) -> Result<(), Error> {
     user.update_playlist_ids(&mut conn, vec![])
 }
 
+/// Get the logged in user's most liked artist
+#[get("/most-liked-artist")]
+fn most_liked_artist(user: User, db: State<DbClient>) -> Result<Json<ScUserInfo>, Error> {
+    let mut conn = db.lock().unwrap();
+    let mut likes_by_artist = HashMap::new();
+
+    if user.liked_track_ids.len() < 1 {
+        return Err(Error::NoLikedTracksForUser);
+    }
+
+    {
+        let mut result_iter = conn.query_raw("
+            SELECT sc_user_id
+            FROM tracks
+            WHERE track_id = ANY($1)
+        ", vec![&user.liked_track_ids as _])?;
+    
+        while let Some(r) = result_iter.next()? {
+            let id: i64 = r.get(0);
+            let count = likes_by_artist.entry(id).or_insert(0);
+            *count += 1;
+        }
+    }
+
+    let mut most_liked_id = -1;
+    let mut most_liked_tracks = 0;
+
+    for (id, num_liked_tracks) in likes_by_artist.iter() {
+        if *num_liked_tracks > most_liked_tracks {
+            most_liked_tracks = *num_liked_tracks;
+            most_liked_id = *id;
+        }
+    }
+
+    let sc_u = SoundCloudUser::load_id(&mut conn, most_liked_id)?;
+    Ok(Json(ScUserInfo {
+        sc_user_id: sc_u.sc_user_id,
+        avatar_url: sc_u.avatar_url,
+        full_name: sc_u.full_name,
+        username: sc_u.username,
+        permalink_url: sc_u.permalink_url
+    }))
+}
+
 /// Create a Rocket instance given a PostgreSQL client.
 fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
     #[cfg(feature = "deployable")]
@@ -473,6 +521,9 @@ fn rocket(client: Client) -> Result<rocket::Rocket, Error> {
                 not_logged_in_post,
                 non_existent_api_get,
                 non_existent_api_post
+            ])
+            .mount("/api/statistics", routes![
+                most_liked_artist
             ])
             .register(catchers![not_found])
     )

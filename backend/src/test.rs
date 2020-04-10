@@ -10,6 +10,36 @@ use serde_json::Value;
 use sse_client::EventSource;
 use crate::*;
 
+impl Default for Track {
+    fn default() -> Self {
+        Track {
+            track_id: 3234,
+            sc_user_id: 234,
+            length_ms: 4039482,
+            created_at: "2019-09-10T16:07:05Z".into(),
+            title: "Database Testing Track".into(),
+            description: "This is a track for testing the database".into(),
+            likes_count: 4838,
+            playback_count: 30248,
+            artwork_url: Some("https://thislinkisinvalid.com".into()),
+            permalink_url: "https://thislinkisalsoinvalid.com".into(),
+            download_url: Some("https://thetrack/download.mp3".into())
+        }
+    }
+}
+
+impl Default for SoundCloudUser {
+    fn default() -> Self {
+        SoundCloudUser {
+            sc_user_id: 102832,
+            avatar_url: Some("https://anotherbadurl.net".into()),
+            full_name: "John Bayer".into(),
+            username: "superdude".into(),
+            permalink_url: "https://ohnoalinkthatdoesntwork.com".into()
+        }
+    }
+}
+
 fn test_client() -> Result<Client, Error> {
     dotenv().ok();
 
@@ -114,6 +144,57 @@ fn clear_playlists() -> Result<(), Error> {
     }
 
     
+    Ok(())
+}
+
+#[test]
+fn most_liked_artist() -> Result<(), Error> {
+    let client = HttpClient::new(rocket(test_client()?)?).unwrap();
+    let db = client.rocket().state::<DbClient>().unwrap();
+    let rinfo = setup_test_user(&client)?;
+
+    let mut tracks: Vec<_> = std::iter::repeat(Track::default()).take(5).collect();
+
+    tracks[0].sc_user_id = 1;
+    tracks[1].sc_user_id = 1;
+    tracks[2].sc_user_id = 2;
+    tracks[3].sc_user_id = 2;
+    tracks[4].sc_user_id = 2;
+
+    tracks[0].track_id = 1;
+    tracks[1].track_id = 2;
+    tracks[2].track_id = 3;
+    tracks[3].track_id = 4;
+    tracks[4].track_id = 5;
+
+    let mut users: Vec<_> = std::iter::repeat(SoundCloudUser::default()).take(2).collect();
+
+    users[0].sc_user_id = 1;
+    users[1].sc_user_id = 2;
+    {
+        let mut conn = db.lock().unwrap();
+        let user = User::load_username(&mut conn, &rinfo.username)?;
+        user.update_liked_track_ids(&mut conn, tracks.iter().map(|t| t.track_id))?;
+
+        for user in users.clone() {
+            user.create_new(&mut conn)?;
+        }
+        for track in tracks {
+            track.create_new(
+                &mut conn,
+                users.iter().find(|u| u.sc_user_id == track.sc_user_id).unwrap()
+            )?;
+        }
+    }
+
+    let mut response = client
+        .get("/api/statistics/most-liked-artist")
+        .dispatch();
+    assert_eq!(response.status().class(), StatusClass::Success);
+
+    let user_info: ScUserInfo = serde_json::from_str(&response.body_string().unwrap())?;
+    assert_eq!(user_info.sc_user_id, users[1].sc_user_id);
+
     Ok(())
 }
 
