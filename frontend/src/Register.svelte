@@ -25,7 +25,7 @@
 
         if (response.ok) {
             await updateStoresAfterLogin(await response.json(), await getSseToken());
-            navigateTo('/')
+            navigateTo('/');
         } else {
             alert(await response.text());
         }

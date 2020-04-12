@@ -5,6 +5,8 @@
 
     import TracksList from './TracksList.svelte'
     import PlaylistsList from './PlaylistsList.svelte'
+    import Login from './Login.svelte'
+    import About from './About.svelte'
     import { signedIn, evtSource } from './stores.js';
     import { updateStoresAfterLogout } from './util.js'
 
@@ -171,7 +173,7 @@
     });
 
     let unsubSignedIn = signedIn.subscribe((val) => {
-        if (val == true) {
+        if (val === true) {
             getLikedTracks();
             getLikedAndOwnedPlaylists();
         }
@@ -179,8 +181,29 @@
 
     onDestroy(unsubEvtSource);
     onDestroy(unsubSignedIn);
+
+
 </script>
 
+<style>
+    .background{
+        background-image: url("https://miro.medium.com/max/3200/1*NKoVsTnFExkyQBvnKK94Yg.jpeg");
+        min-height: 100%;
+        min-width: 100%;
+    }
+    .Title{
+        font-size: 40px;
+        color: white;
+    }
+    .Title-div{
+        text-align: center;
+    }
+</style>
+
+<div class="background">
+    <div class="Title-div">
+        <h class="Title">Sound Cloud Archive Site</h>
+    </div>
 {#if $signedIn}
     <p>Hi! You are signed in.</p>
     <button on:click="{logOut}">Log Out</button>
@@ -198,6 +221,8 @@
 {:else}
     <p>You are not signed in.</p>
 
-    <Link href="login">Log In</Link>
+    <Login/>
     <Link href="register">Register</Link>
 {/if}
+    <About/>
+</div>
