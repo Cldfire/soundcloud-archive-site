@@ -222,7 +222,6 @@
     <p>You are not signed in.</p>
 
     <Login/>
-    <Link href="register">Register</Link>
 {/if}
     <About/>
 </div>

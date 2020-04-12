@@ -1,5 +1,6 @@
 <script>
     import { navigateTo } from 'yrv';
+    import { Link } from 'yrv';
 
     import { getSseToken, updateStoresAfterLogin } from './util.js';
 
@@ -32,7 +33,7 @@
     }
 </script>
 <div style="float: right;">
-<form on:submit|preventDefault="{handleSubmit}">
+    <form on:submit|preventDefault="{handleSubmit}">
     <table width="100%">
         <tr>
             <th>
@@ -46,5 +47,8 @@
             </th>
         </tr>
     </table>
-</form>
+    </form>
+    <form action="register">
+        <button>Register</button>
+    </form>
 </div>
