@@ -31,13 +31,20 @@
         }
     }
 </script>
-
+<div style="float: right;">
 <form on:submit|preventDefault="{handleSubmit}">
-    <label for="username">Username</label>
-    <input required id="username"/>
-
-    <label for="password">Password</label>
-    <input required type="password" id="password"/>
-
-    <button type="submit">Log In</button>
+    <table width="100%">
+        <tr>
+            <th>
+                <input required id="username" placeholder="Username"/>
+            </th>
+            <th>
+                <input required type="password" id="password" placeholder="Password"/>
+            </th>
+            <th>
+                <button id="submit" type="submit">Log In</button>
+            </th>
+        </tr>
+    </table>
 </form>
+</div>
