@@ -1,4 +1,5 @@
 <script>
+    import {Tabs, Tab, TabList, TabPanel } from 'svelte-tabs';
     import { Link } from 'yrv';
     import { get } from 'svelte/store';
     import { onDestroy } from 'svelte';
@@ -211,13 +212,24 @@
 
     <Link href="set-soundcloud-credentials">Set SoundCloud Credentials</Link>
     <br>
-
     <button on:click="{startScraping}">Scrape SoundCloud</button>
+
+    <Tabs>
+        <TabList>
+            <Tab>Tracks</Tab>
+            <Tab>Playlists</Tab>
+        </TabList>
+
+        <TabPanel>
+            <TracksList tracks={likedTracks}/>
+        </TabPanel>
+        <TabPanel>
+            <PlaylistsList playlists={likedAndOwnedPlaylists}/>
+        </TabPanel>
+    </Tabs>
     <button on:click="{clearLikedTracks}">Delete Liked Tracks</button>
     <button on:click="{clearPlaylists}">Delete Playlists</button>
 
-    <TracksList tracks={likedTracks}/>
-    <PlaylistsList playlists={likedAndOwnedPlaylists}/>
 {:else}
     <p>You are not signed in.</p>
 

@@ -13,6 +13,7 @@
   "dependencies": {
     "@sveltejs/svelte-virtual-list": "^3.0.1",
     "sirv-cli": "^0.4.4",
+    "svelte-tabs": "^1.1.0",
     "yrv": "0.0.27"
   },
   "scripts": {
