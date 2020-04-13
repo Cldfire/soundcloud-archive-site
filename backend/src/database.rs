@@ -16,7 +16,7 @@ pub fn postgresql_client() -> Result<Client, Error> {
         .user(&env::var("POSTGRES_USER").unwrap())
         .dbname(&env::var("POSTGRES_DBNAME").unwrap())
         .host(&env::var("POSTGRES_HOST").unwrap())
-        .password(&env::var("POSTGRES_PASSWORD").unwrap())
+        .password(&env::var("POSTGRES_PASSWORD").unwrap_or("".into()))
         .connect(NoTls)?;
 
     create_tables(&mut client)?;
