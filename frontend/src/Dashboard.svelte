@@ -187,6 +187,13 @@
 </script>
 
 <style>
+    :global(.svelte-tabs),:global(.svelte-tabs li.svelte-tabs__tab){
+        color: white;
+    }
+    :global(.svelte-tabs li.svelte-tabs__selected),:global(.svelte-tabs div.svelte-tabs__tab-panel){
+        color: gray;
+    }
+
     .background{
         background-image: url("https://miro.medium.com/max/3200/1*NKoVsTnFExkyQBvnKK94Yg.jpeg");
         min-height: 100%;
@@ -206,8 +213,9 @@
         <h class="Title">Sound Cloud Archive Site</h>
     </div>
 {#if $signedIn}
-    <p>Hi! You are signed in.</p>
+    <div style="float: right;">
     <button on:click="{logOut}">Log Out</button>
+    </div>
     <br>
 
     <Link href="set-soundcloud-credentials">Set SoundCloud Credentials</Link>
@@ -216,8 +224,8 @@
 
     <Tabs>
         <TabList>
-            <Tab>Tracks</Tab>
-            <Tab>Playlists</Tab>
+            <Tab class="Tab">Tracks</Tab>
+            <Tab class="Tab">Playlists</Tab>
         </TabList>
 
         <TabPanel>
