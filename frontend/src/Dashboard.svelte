@@ -20,12 +20,54 @@
 
             this.finishedDownloadingTracks = false;
             this.finishedDownloadingPlaylists = false;
+            loading();
+        }
+
+        getstat(){
+            if(this.numPlaylistsToDownload < 0 || this.numTracksToDownload < 0)
+                return 0;
+            if(this.numTracksToDownload + this.numPlaylistsToDownload === 0)
+                return 0;
+            return ((this.numPlaylistsDownloaded + this.numTracksDownloaded) /
+                    (this.numTracksToDownload + this.numPlaylistsToDownload));
         }
     }
+
+    let totalDownloads = 0;
+    let totalDownloaded = 0;
+    let progress;
+
 
     var likedTracks = [];
     var likedAndOwnedPlaylists = [];
     var ss = new ScrapingState();
+
+    function checknulltext(obj, output){
+        if(obj != null){
+            obj.text = output;
+        }
+    }
+    function checknullvalue(obj, output) {
+        if(obj != null){
+            obj.value = output;
+        }
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function loading(){
+        if(ss === undefined){
+            checknulltext(document.getElementById("loading"), "0%");
+            checknullvalue(document.getElementById("loading_bar"), 0);
+        } else{
+            checknulltext(document.getElementById("loading"), ss.getstat().toString() + "%");
+            checknullvalue(document.getElementById("loading_bar"), ss.getstat());
+        }
+        await sleep(1000);
+        loading();
+    }
 
     async function logOut() {
         const response = await fetch(
@@ -54,11 +96,15 @@
         );
 
         if (response.ok) {
-            alert("Started scraping process");
         } else {
             alert(await response.text());
         }
     }
+
+    function loadingbar(){
+        document.getElementById("loading").style.width = "50%";
+    }
+
 
     async function clearLikedTracks() {
         const response = await fetch(
@@ -88,6 +134,7 @@
         if (response.ok) {
             getLikedAndOwnedPlaylists();
         } else {
+            document.getElementById("loading").value = ss.getstat();
             alert(await response.text());
         }
     }
@@ -104,6 +151,7 @@
         if (response.ok) {
             likedTracks = await response.json();
         } else {
+            document.getElementById("loading").value = ss.getstat();
             alert(await response.text());
         }
     }
@@ -169,9 +217,11 @@
                 ) {
                     ss.finishedDownloadingPlaylists = true;
                 }
+                document.getElementById("loading").value = ss.getstat();
             });
         }
     });
+
 
     let unsubSignedIn = signedIn.subscribe((val) => {
         if (val === true) {
@@ -206,6 +256,22 @@
     .Title-div{
         text-align: center;
     }
+    .Loading_Transparent{
+        opacity: 40%;
+        height: 10px;
+        background: black;
+        width: 100%;
+        margin-right: auto;
+        margin-left: auto;
+    }
+    .Loading_bar{
+        opacity: 20%;
+        height: 10px;
+        background: white;
+        width: 0.1%;
+        margin-right: auto;
+        margin-left: auto;
+    }
 </style>
 
 <div class="background">
@@ -221,7 +287,8 @@
     <Link href="set-soundcloud-credentials">Set SoundCloud Credentials</Link>
     <br>
     <button on:click="{startScraping}">Scrape SoundCloud</button>
-
+    <small class="mb-3" id="loading">0%</small>
+    <progress id="loading_bar" value="0"></progress>
     <Tabs>
         <TabList>
             <Tab class="Tab">Tracks</Tab>
