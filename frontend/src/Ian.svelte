@@ -5,14 +5,5 @@
 </style>
 
 <p>
-    Enjoys Magic the Gathering
-</p>
-<p>
-    Wants to create a cloud OS someday.
-</p>
-<p>
-    Makes funny faces.
-</p>
-<p>
-    Is not the best UX designer.
+    Wants to create a cloud OS someday. Makes funny faces. Is not the best UX designer.
 </p>

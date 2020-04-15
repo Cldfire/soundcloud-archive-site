@@ -185,10 +185,14 @@
                         ss.numTracksToDownload = d
                             .NumLikesInfoToDownload
                             .num;
+
                     } else if (d.MoreLikesInfoDownloaded) {
                         ss.numTracksDownloaded += d
                             .MoreLikesInfoDownloaded
                             .count;
+                        downloaded += d
+                                .MoreLikesInfoDownloaded
+                                .count;
                     }
                 } else if (data.PlaylistsScrapingEvent) {
                     let d = data.PlaylistsScrapingEvent;
@@ -199,6 +203,7 @@
                             .num;
                     } else if (d.FinishPlaylistInfoDownload) {
                         ss.numPlaylistsDownloaded += 1;
+                        downloaded += 1;
                     }
                 } else if (data == "Complete") {
                     getLikedTracks();
@@ -222,6 +227,7 @@
             });
         }
         downloaded = download;
+        download = downloaded
     });
 
 
@@ -277,6 +283,13 @@
     small{
         color: white;
     }
+    .login{
+        width: 100%;
+        height: 30%;
+    }
+    p{
+        color: white;
+    }
 </style>
 
 <div class="background">
@@ -314,9 +327,11 @@
     <button on:click="{clearPlaylists}">Delete Playlists</button>
     </div>
 {:else}
+<div class="login">
     <p>You are not signed in.</p>
 
     <Login/>
+</div>
 {/if}
     <About/>
 </div>
