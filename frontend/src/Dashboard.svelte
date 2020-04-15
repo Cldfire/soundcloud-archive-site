@@ -20,27 +20,31 @@
 
             this.finishedDownloadingTracks = false;
             this.finishedDownloadingPlaylists = false;
-            loading();
         }
 
         getstat(){
+            let ret = 0;
             if(this.numPlaylistsToDownload < 0 || this.numTracksToDownload < 0)
-                return 0;
-            if(this.numTracksToDownload + this.numPlaylistsToDownload === 0)
-                return 0;
-            return ((this.numPlaylistsDownloaded + this.numTracksDownloaded) /
-                    (this.numTracksToDownload + this.numPlaylistsToDownload));
+                return ret;
+            else if(this.numTracksToDownload + this.numPlaylistsToDownload === 0)
+                return ret;
+            else{
+                ret = ((this.numPlaylistsDownloaded + this.numTracksDownloaded) /
+                        (this.numTracksToDownload + this.numPlaylistsToDownload));
+            }
+            return ret;
         }
     }
 
-    let totalDownloads = 0;
-    let totalDownloaded = 0;
-    let progress;
+    let download = 1;
+    let downloaded = 0;
 
-
+    var searchstring = "";
     var likedTracks = [];
     var likedAndOwnedPlaylists = [];
     var ss = new ScrapingState();
+
+    let progress;
 
     function checknulltext(obj, output){
         if(obj != null){
@@ -58,15 +62,11 @@
     }
 
     async function loading(){
-        if(ss === undefined){
-            checknulltext(document.getElementById("loading"), "0%");
-            checknullvalue(document.getElementById("loading_bar"), 0);
-        } else{
-            checknulltext(document.getElementById("loading"), ss.getstat().toString() + "%");
-            checknullvalue(document.getElementById("loading_bar"), ss.getstat());
+        if(ss === undefined || ss === null || ss.getstat() === Infinity || ss.getstat() === NaN){
+            progress = 0.0;
+        } else {
+            return ss.getstat();
         }
-        await sleep(1000);
-        loading();
     }
 
     async function logOut() {
@@ -94,9 +94,10 @@
                 credentials: 'same-origin'
             }
         );
-
         if (response.ok) {
+
         } else {
+            response.status
             alert(await response.text());
         }
     }
@@ -134,7 +135,6 @@
         if (response.ok) {
             getLikedAndOwnedPlaylists();
         } else {
-            document.getElementById("loading").value = ss.getstat();
             alert(await response.text());
         }
     }
@@ -151,7 +151,6 @@
         if (response.ok) {
             likedTracks = await response.json();
         } else {
-            document.getElementById("loading").value = ss.getstat();
             alert(await response.text());
         }
     }
@@ -166,6 +165,7 @@
         );
 
         if (response.ok) {
+
             likedAndOwnedPlaylists = await response.json();
         } else {
             alert(await response.text());
@@ -176,7 +176,8 @@
         if (es != null) {
             es.addEventListener('update', (e) => {
                 let data = JSON.parse(e.data);
-
+                download = ss.numPlaylistsToDownload + ss.numTracksToDownload;
+                downloaded = ss.numPlaylistsDownloaded + ss.numPlaylistsDownloaded +1;
                 if (data.LikesScrapingEvent) {
                     let d = data.LikesScrapingEvent;
 
@@ -220,6 +221,7 @@
                 document.getElementById("loading").value = ss.getstat();
             });
         }
+        downloaded = download;
     });
 
 
@@ -233,7 +235,6 @@
     onDestroy(unsubEvtSource);
     onDestroy(unsubSignedIn);
 
-
 </script>
 
 <style>
@@ -246,6 +247,7 @@
 
     .background{
         background-image: url("https://miro.medium.com/max/3200/1*NKoVsTnFExkyQBvnKK94Yg.jpeg");
+        background-size: cover;
         min-height: 100%;
         min-width: 100%;
     }
@@ -272,6 +274,9 @@
         margin-right: auto;
         margin-left: auto;
     }
+    small{
+        color: white;
+    }
 </style>
 
 <div class="background">
@@ -287,8 +292,10 @@
     <Link href="set-soundcloud-credentials">Set SoundCloud Credentials</Link>
     <br>
     <button on:click="{startScraping}">Scrape SoundCloud</button>
-    <small class="mb-3" id="loading">0%</small>
-    <progress id="loading_bar" value="0"></progress>
+    <small class="mb-3" id="loading">{Math.floor((downloaded / download) * 100.0)}%</small>
+    <progress id="loading_bar" max={download} value={downloaded}></progress>
+    <small>Reload at 100%</small>
+
     <Tabs>
         <TabList>
             <Tab class="Tab">Tracks</Tab>
@@ -302,9 +309,10 @@
             <PlaylistsList playlists={likedAndOwnedPlaylists}/>
         </TabPanel>
     </Tabs>
+    <div class="Title-div">
     <button on:click="{clearLikedTracks}">Delete Liked Tracks</button>
     <button on:click="{clearPlaylists}">Delete Playlists</button>
-
+    </div>
 {:else}
     <p>You are not signed in.</p>
 

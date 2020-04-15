@@ -10,7 +10,12 @@
         select = 2;
     }
 </script>
-<div>
+<style>
+    .Title-div{
+        text-align: center;
+    }
+</style>
+<div class="Title-div">
     <button on:click={select_ian}>About Ian</button>
     <button on:click={select_jarek}>About Jarek</button>
 
