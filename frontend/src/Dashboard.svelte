@@ -20,19 +20,10 @@
 
             this.finishedDownloadingTracks = false;
             this.finishedDownloadingPlaylists = false;
-        }
-
-        getstat(){
-            let ret = 0;
-            if(this.numPlaylistsToDownload < 0 || this.numTracksToDownload < 0)
-                return ret;
-            else if(this.numTracksToDownload + this.numPlaylistsToDownload === 0)
-                return ret;
-            else{
-                ret = ((this.numPlaylistsDownloaded + this.numTracksDownloaded) /
-                        (this.numTracksToDownload + this.numPlaylistsToDownload));
-            }
-            return ret;
+            downloaded_playlist = -1;
+            download_playlist = -1;
+            download_track = 0;
+            downloaded_track = 0;
         }
     }
 
@@ -40,34 +31,15 @@
     let downloaded_track = 0;
     let download_playlist = 1;
     let downloaded_playlist = 0;
-    var searchstring = "";
-    var likedTracks = [];
-    var likedAndOwnedPlaylists = [];
-    var ss = new ScrapingState();
+    let searchstring = "";
+    let likedTracks = [];
+    let likedAndOwnedPlaylists = [];
+    let ss = new ScrapingState();
 
     let progress;
 
-    function checknulltext(obj, output){
-        if(obj != null){
-            obj.text = output;
-        }
-    }
-    function checknullvalue(obj, output) {
-        if(obj != null){
-            obj.value = output;
-        }
-    }
-
     function sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    async function loading(){
-        if(ss === undefined || ss === null || ss.getstat() === Infinity || ss.getstat() === NaN){
-            progress = 0.0;
-        } else {
-            return ss.getstat();
-        }
     }
 
     async function logOut() {
@@ -102,11 +74,6 @@
             alert(await response.text());
         }
     }
-
-    function loadingbar(){
-        document.getElementById("loading").style.width = "50%";
-    }
-
 
     async function clearLikedTracks() {
         const response = await fetch(
@@ -148,7 +115,6 @@
                 credentials: 'same-origin'
             }
         );
-
         if (response.ok) {
             likedTracks = await response.json();
         } else {
@@ -164,9 +130,7 @@
                 credentials: 'same-origin'
             }
         );
-
         if (response.ok) {
-
             likedAndOwnedPlaylists = await response.json();
         } else {
             alert(await response.text());
@@ -206,7 +170,6 @@
                 if (!ss.finishedDownloadingTracks && ss.numTracksToDownload == ss.numTracksDownloaded)
                 {
                     ss.finishedDownloadingTracks = true;
-                    download_track = downloaded_track;
                     downloaded_track = download_track;
                 }
 
@@ -214,12 +177,10 @@
                 {
                     ss.finishedDownloadingPlaylists = true;
                     downloaded_playlist = download_playlist;
-                    download_playlist = downloaded_playlist;
                 }
             });
         }
     });
-
 
     let unsubSignedIn = signedIn.subscribe((val) => {
         if (val === true) {
@@ -291,7 +252,6 @@
     <button on:click="{logOut}">Log Out</button>
     </div>
     <br>
-
     <Link href="set-soundcloud-credentials">Set SoundCloud Credentials</Link>
     <br>
     <button on:click="{startScraping}">Scrape SoundCloud</button>
@@ -300,7 +260,6 @@
     <small class="mb-3">Playlist: {Math.floor((downloaded_playlist/ download_playlist) *100)}%</small>
     <progress max={download_playlist} value={downloaded_playlist}></progress>
     <small>Reload at 100%</small>
-
     <Tabs>
         <TabList>
             <Tab class="Tab">Tracks</Tab>

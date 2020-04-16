@@ -15,8 +15,6 @@
         return obj.toLowerCase();
     }
 
-
-
     function timeMstoReg(input) {
         let ret = "";
         let h = Math.floor(input / (1000 * 60 * 60));
@@ -31,7 +29,6 @@
         ret += s;
         return ret;
     }
-
 </script>
 
 <style>
