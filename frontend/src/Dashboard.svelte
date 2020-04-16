@@ -39,6 +39,7 @@
     let ss = new ScrapingState();
 
     let progress;
+    let scraped = false;
 
     async function logOut() {
         const response = await fetch(
@@ -70,6 +71,7 @@
         } else {
             alert(await response.text());
         }
+        scraped = true;
     }
 
     async function clearLikedTracks() {
@@ -302,7 +304,9 @@
         <TabList>
             <Tab class="Tab">Tracks</Tab>
             <Tab class="Tab">Playlists</Tab>
+            {#if scraped}
             <Tab class="Tab">About You</Tab>
+            {/if}
         </TabList>
 
         <TabPanel>
@@ -311,9 +315,11 @@
         <TabPanel>
             <PlaylistsList playlists={likedAndOwnedPlaylists}/>
         </TabPanel>
+        {#if scraped}
         <TabPanel>
             <AboutYou artist={artist} playback={playback}/>
         </TabPanel>
+        {/if}
     </Tabs>
     <div class="Title-div">
     <button on:click="{clearLikedTracks}">Delete Liked Tracks</button>

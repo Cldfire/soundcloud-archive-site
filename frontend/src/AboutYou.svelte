@@ -35,8 +35,8 @@
     <tr>
         <th>Avatar</th>
         <th>Full Name</th>
-        <th>Username</th>
-        <th>Average Playback Count</th>
+        <th>Favorite Artist</th>
+        <th>Average Playback Count of all Tracks</th>
     </tr>
     <tr>
         <th><img src="{artist.avatar_url}" alt="Not Found"></th>
