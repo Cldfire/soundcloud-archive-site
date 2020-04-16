@@ -20,7 +20,10 @@
         if( h !== 0)
             ret += h + "h";
         ret += m + ":";
-        ret += s + "";
+        if(s < 10) {
+            ret += "0";
+        }
+        ret += s;
         return ret;
     }
 
