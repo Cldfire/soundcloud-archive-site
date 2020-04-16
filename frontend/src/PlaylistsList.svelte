@@ -62,7 +62,6 @@
     <tr>
         <th>Title</th>
         <th>Length</th>
-        <th>Playback Count</th>
         <th>Username</th>
         <th>Date Created</th>
         <th>Number of Tracks</th>
@@ -74,7 +73,6 @@
         <tr>
             <th>{item.title}</th>
             <th>{timeMstoReg(item.length_ms)}</th>
-            <th>{item.playback_count}</th>
             <th>{item.username}</th>
             <th>{item.created_at}</th>
             <th>{item.num_tracks}</th>
