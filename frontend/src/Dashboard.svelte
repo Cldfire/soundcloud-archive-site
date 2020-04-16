@@ -8,6 +8,7 @@
     import PlaylistsList from './PlaylistsList.svelte'
     import Login from './Login.svelte'
     import About from './About.svelte'
+    import AboutYou from './AboutYou.svelte'
     import { signedIn, evtSource } from './stores.js';
     import { updateStoresAfterLogout } from './util.js'
 
@@ -191,6 +192,44 @@
     onDestroy(unsubEvtSource);
     onDestroy(unsubSignedIn);
 
+    let artist;
+    async function getArtist() {
+        const response = await fetch(
+                "/api/statistics/most-liked-artist",
+                {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                }
+        );
+        if (response.ok) {
+            artist = await response.json();
+        } else {
+            alert(await response.text());
+        }
+    }
+    getArtist();
+    // sc_user_id: sc_u.sc_user_id,
+    // avatar_url: sc_u.avatar_url,
+    // full_name: sc_u.full_name,
+    // username: sc_u.username,
+    // permalink_url: sc_u.permalink_url
+    let playback;
+    async function getPlayback() {
+        const response = await fetch(
+                "/api/statistics/average-playback-count",
+                {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                }
+        );
+        if (response.ok) {
+            playback = await response.json();
+        } else {
+            alert(await response.text());
+        }
+    }
+    getPlayback();
+
 </script>
 
 <style>
@@ -263,6 +302,7 @@
         <TabList>
             <Tab class="Tab">Tracks</Tab>
             <Tab class="Tab">Playlists</Tab>
+            <Tab class="Tab">About You</Tab>
         </TabList>
 
         <TabPanel>
@@ -270,6 +310,9 @@
         </TabPanel>
         <TabPanel>
             <PlaylistsList playlists={likedAndOwnedPlaylists}/>
+        </TabPanel>
+        <TabPanel>
+            <AboutYou artist={artist} playback={playback}/>
         </TabPanel>
     </Tabs>
     <div class="Title-div">
