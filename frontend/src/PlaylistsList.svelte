@@ -97,6 +97,7 @@
 
     function finish(){
         playShow = false;
+        tracksInfo = [];
     }
 </script>
 
