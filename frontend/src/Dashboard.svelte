@@ -37,11 +37,7 @@
     let ss = new ScrapingState();
 
     let progress;
-
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
+    
     async function logOut() {
         const response = await fetch(
             "/api/logout",
