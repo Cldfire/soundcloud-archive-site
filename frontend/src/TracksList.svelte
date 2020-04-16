@@ -95,11 +95,10 @@
         width: 100%;
         height: 40px;
     }
+    p{
+        color: white;
+    }
 </style>
-
-<div width="100%" height="auto">
-    <textarea id="SearchBar" placeholder="Search Bar: use only lowercase"  bind:value={searchTerm}></textarea>
-</div>
 {#if trackShow}
 <h2>Details on {song} by {artist}</h2>
 <table>
@@ -121,6 +120,9 @@
 <p>Description: {descript}</p>
 <button on:click={finish}>Exit Info</button>
 {:else}
+<div width="100%" height="auto">
+    <textarea id="SearchBar" placeholder="Search Bar: use only lowercase"  bind:value={searchTerm}></textarea>
+</div>
 <h2>Liked Tracks:</h2>
 <table width="100%">
     <tr>
