@@ -175,7 +175,7 @@
 <VirtualList height="400px" items={filterList} let:item>
     <table>
         <tr>
-            <th>{item.title}</th>
+            <th><button on:click="{getTrackInfo(item.playlist_id)}">{item.title}</button></th>
             <th>{timeMstoReg(item.length_ms)}</th>
             <th>{item.username}</th>
             <th>{item.created_at}</th>
