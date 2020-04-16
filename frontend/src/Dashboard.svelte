@@ -20,13 +20,14 @@
 
             this.finishedDownloadingTracks = false;
             this.finishedDownloadingPlaylists = false;
-            downloaded_playlist = -1;
-            download_playlist = -1;
+            downloaded_playlist = 0;
+            download_playlist = 0;
             download_track = 0;
             downloaded_track = 0;
         }
     }
 
+    let trackDetails;
     let download_track = 1;
     let downloaded_track = 0;
     let download_playlist = 1;
@@ -57,7 +58,7 @@
         ss = new ScrapingState();
 
         const response = await fetch(
-            "/api/do-scraping?num_recent_likes=500&num_recent_playlists=5",
+            "/api/do-scraping?num_recent_likes=500&num_recent_playlists=50",
             {
                 method: 'GET',
                 credentials: 'same-origin'
@@ -66,7 +67,6 @@
         if (response.ok) {
 
         } else {
-            response.status
             alert(await response.text());
         }
     }
@@ -117,6 +117,8 @@
             alert(await response.text());
         }
     }
+
+
 
     async function getLikedAndOwnedPlaylists() {
         const response = await fetch(
