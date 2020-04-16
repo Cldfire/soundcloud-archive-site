@@ -22,8 +22,8 @@
             this.finishedDownloadingTracks = false;
             this.finishedDownloadingPlaylists = false;
             downloaded_playlist = 0;
-            download_playlist = 0;
-            download_track = 0;
+            download_playlist = 1;
+            download_track = 1;
             downloaded_track = 0;
         }
     }
