@@ -37,7 +37,7 @@
     th, td {
         border: 1px solid white;
         color: white;
-        width: 33%;
+        width: 20%;
     }
     td {
     }
@@ -53,9 +53,7 @@
 <div width="100%" height="auto">
     <textarea id="SearchBar" placeholder="Search Bar"  bind:value={searchTerm}></textarea>
 </div>
-{#if tracks.length > 0}
-    <h2>Liked Tracks:</h2>
-{/if}
+<h2>Liked Tracks:</h2>
 <table width="100%">
     <tr>
         <th>Title</th>

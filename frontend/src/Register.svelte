@@ -36,6 +36,7 @@
         background-image: url("https://miro.medium.com/max/3200/1*NKoVsTnFExkyQBvnKK94Yg.jpeg");
         min-height: 100%;
         min-width: 100%;
+        background-size: cover;
     }
     .Title{
         font-size: 40px;

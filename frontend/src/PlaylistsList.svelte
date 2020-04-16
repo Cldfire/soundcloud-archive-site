@@ -20,7 +20,10 @@
         if( h !== 0)
             ret += h + "h";
         ret += m + ":";
-        ret += s + "";
+        if(s < 10) {
+            ret += "0";
+        }
+        ret += s;
         return ret;
     }
 
@@ -54,9 +57,7 @@
 <div width="100%" height="auto">
     <textarea id="SearchBar" placeholder="Search Bar"  bind:value={searchTerm}></textarea>
 </div>
-{#if playlists.length > 0}
-    <h2>Liked and Owned Playlists:</h2>
-{/if}
+<h2>Liked and Owned Playlists:</h2>
 <table width="100%">
     <tr>
         <th>Title</th>
