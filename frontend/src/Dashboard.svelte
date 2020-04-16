@@ -216,7 +216,6 @@
                     downloaded_playlist = download_playlist;
                     download_playlist = downloaded_playlist;
                 }
-                document.getElementById("loading").value = ss.getstat();
             });
         }
     });
@@ -297,9 +296,9 @@
     <br>
     <button on:click="{startScraping}">Scrape SoundCloud</button>
     <small class="mb-3" id="loading">Track: {Math.floor((downloaded_track / download_track) * 100.0)}%</small>
-    <progress id="loading_bar" max={download_track} value={downloaded_track}></progress>
+    <progress max={download_track} value={downloaded_track}></progress>
     <small class="mb-3">Playlist: {Math.floor((downloaded_playlist/ download_playlist) *100)}%</small>
-    <progress id="loading_bar" max={download_playlist} value={downloaded_playlist}></progress>
+    <progress max={download_playlist} value={downloaded_playlist}></progress>
     <small>Reload at 100%</small>
 
     <Tabs>

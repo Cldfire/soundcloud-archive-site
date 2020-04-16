@@ -7,10 +7,14 @@
 
     $: filterList = playlists.filter(
         item =>
-                item.title.indexOf(searchTerm) !== -1 ||
-                item.username.indexOf(searchTerm) !== -1 ||
+                toUpper(item.title).indexOf(searchTerm) !== -1 ||
+                toUpper(item.username).indexOf(searchTerm) !== -1 ||
                 searchTerm === undefined
     );
+
+    function toUpper(obj){
+        return obj.toLowerCase();
+    }
 
     function timeMstoReg(input) {
         let ret = "";
@@ -55,7 +59,7 @@
     }
 </style>
 <div width="100%" height="auto">
-    <textarea id="SearchBar" placeholder="Search Bar"  bind:value={searchTerm}></textarea>
+    <textarea id="SearchBar" placeholder="Search Bar: use only lowercase"  bind:value={searchTerm}></textarea>
 </div>
 <h2>Liked and Owned Playlists:</h2>
 <table width="100%">
