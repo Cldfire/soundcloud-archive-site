@@ -279,7 +279,7 @@ fn do_scraping(
                     Track::from(track).create_new(
                         &mut conn,
                         &SoundCloudUser::from(track.user.as_ref().unwrap())
-                    )?;
+                    ).unwrap();
 
                     liked_track_ids.insert(track.id.unwrap());
                 }
@@ -289,9 +289,8 @@ fn do_scraping(
                 for playlist in playlists.playlists.iter() {
                     Playlist::from(playlist).create_new(
                         &mut conn,
-                        &SoundCloudUser::from(playlist.user.as_ref().unwrap()),
-                        &playlist.tracks.as_ref().unwrap().into_iter().map(|t| Track::from(t)).collect()
-                    )?;
+                        &playlist
+                    ).unwrap();
 
                     playlist_ids.insert(playlist.id.unwrap());
                 }

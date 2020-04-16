@@ -558,18 +558,16 @@ impl Playlist {
     }
 
     /// Creates a new playlist in the database based on an instance of the struct
-    /// and references to the user that owns the playlist and the list of tracks
-    /// in the playlist.
+    /// and a reference to the info about the playlist.
     pub fn create_new(
         &self,
         client: &mut Client,
-        user: &SoundCloudUser,
-        tracks: &Vec<Track>
+        playlist_info: &ScPlaylist
     ) -> Result<(), Error> {
-        user.create_new(client)?;
+        SoundCloudUser::from(playlist_info.user.as_ref().unwrap()).create_new(client)?;
 
-        for track in tracks {
-            track.create_new(client, user)?;
+        for track in playlist_info.tracks.as_ref().unwrap() {
+            Track::from(track).create_new(client, &SoundCloudUser::from(track.user.as_ref().unwrap()))?;
         }
 
         Ok(client.execute(

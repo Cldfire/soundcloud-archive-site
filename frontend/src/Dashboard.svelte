@@ -58,7 +58,7 @@
         ss = new ScrapingState();
 
         const response = await fetch(
-            "/api/do-scraping?num_recent_likes=500&num_recent_playlists=50",
+            "/api/do-scraping?num_recent_likes=500&num_recent_playlists=30",
             {
                 method: 'GET',
                 credentials: 'same-origin'
@@ -139,6 +139,7 @@
         if (es != null) {
             es.addEventListener('update', (e) => {
                 let data = JSON.parse(e.data);
+                console.log(data);
                 if (data.LikesScrapingEvent) {
                     let d = data.LikesScrapingEvent;
 
