@@ -36,9 +36,10 @@
         }
     }
 
-    let download = 2;
-    let downloaded = 0;
-
+    let download_track = 1;
+    let downloaded_track = 0;
+    let download_playlist = 1;
+    let downloaded_playlist = 0;
     var searchstring = "";
     var likedTracks = [];
     var likedAndOwnedPlaylists = [];
@@ -183,11 +184,14 @@
                         ss.numTracksToDownload = d
                             .NumLikesInfoToDownload
                             .num;
-
+                        download_track = ss.numTracksToDownload;
                     } else if (d.MoreLikesInfoDownloaded) {
                         ss.numTracksDownloaded += d
                             .MoreLikesInfoDownloaded
                             .count;
+                        downloaded_track += d
+                                .MoreLikesInfoDownloaded
+                                .count;
                     }
                 } else if (data.PlaylistsScrapingEvent) {
                     let d = data.PlaylistsScrapingEvent;
@@ -196,8 +200,10 @@
                         ss.numPlaylistsToDownload = d
                             .NumPlaylistInfoToDownload
                             .num;
+                        download_playlist = ss.numPlaylistsToDownload;
                     } else if (d.FinishPlaylistInfoDownload) {
                         ss.numPlaylistsDownloaded += 1;
+                        downloaded_playlist += 1;
                     }
                 } else if (data == "Complete") {
                     getLikedTracks();
@@ -209,7 +215,8 @@
                     ss.numTracksToDownload == ss.numTracksDownloaded
                 ) {
                     ss.finishedDownloadingTracks = true;
-                    downloaded += 1;
+                    download_track = downloaded_track;
+                    downloaded_track = download_track;
                 }
 
                 if (
@@ -217,7 +224,8 @@
                     ss.numPlaylistsToDownload == ss.numPlaylistsDownloaded
                 ) {
                     ss.finishedDownloadingPlaylists = true;
-                    downloaded += 1;
+                    downloaded_playlist = download_playlist;
+                    download_playlist = downloaded_playlist;
                 }
                 document.getElementById("loading").value = ss.getstat();
             });
@@ -299,8 +307,10 @@
     <Link href="set-soundcloud-credentials">Set SoundCloud Credentials</Link>
     <br>
     <button on:click="{startScraping}">Scrape SoundCloud</button>
-    <small class="mb-3" id="loading">{Math.floor((downloaded / download) * 100.0)}%</small>
-    <progress id="loading_bar" max={download} value={downloaded}></progress>
+    <small class="mb-3" id="loading">Track: {Math.floor((downloaded_track / download_track) * 100.0)}%</small>
+    <progress id="loading_bar" max={download_track} value={downloaded_track}></progress>
+    <small class="mb-3">Playlist: {Math.floor((downloaded_playlist/ download_playlist) *100)}%</small>
+    <progress id="loading_bar" max={download_playlist} value={downloaded_playlist}></progress>
     <small>Reload at 100%</small>
 
     <Tabs>
