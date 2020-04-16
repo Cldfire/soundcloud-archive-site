@@ -37,7 +37,7 @@
     let ss = new ScrapingState();
 
     let progress;
-    
+
     async function logOut() {
         const response = await fetch(
             "/api/logout",
