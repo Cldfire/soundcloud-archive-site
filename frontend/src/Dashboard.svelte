@@ -181,26 +181,19 @@
                     let d = data.LikesScrapingEvent;
 
                     if (d.NumLikesInfoToDownload) {
-                        ss.numTracksToDownload = d
-                            .NumLikesInfoToDownload
-                            .num;
-                        download_track = ss.numTracksToDownload;
+                        ss.numTracksToDownload = d.NumLikesInfoToDownload.num;
+                        download_track = d.NumLikesInfoToDownload.num;
                     } else if (d.MoreLikesInfoDownloaded) {
-                        ss.numTracksDownloaded += d
-                            .MoreLikesInfoDownloaded
-                            .count;
-                        downloaded_track += d
-                                .MoreLikesInfoDownloaded
-                                .count;
+                        ss.numTracksDownloaded += d.MoreLikesInfoDownloaded.count;
+                        downloaded_track += d.MoreLikesInfoDownloaded.count;
                     }
+
                 } else if (data.PlaylistsScrapingEvent) {
                     let d = data.PlaylistsScrapingEvent;
 
                     if (d.NumPlaylistInfoToDownload) {
-                        ss.numPlaylistsToDownload = d
-                            .NumPlaylistInfoToDownload
-                            .num;
-                        download_playlist = ss.numPlaylistsToDownload;
+                        ss.numPlaylistsToDownload = d.NumPlaylistInfoToDownload.num;
+                        download_playlist = d.NumPlaylistInfoToDownload.num;
                     } else if (d.FinishPlaylistInfoDownload) {
                         ss.numPlaylistsDownloaded += 1;
                         downloaded_playlist += 1;
@@ -210,19 +203,15 @@
                     getLikedAndOwnedPlaylists();
                 }
 
-                if (
-                    !ss.finishedDownloadingTracks &&
-                    ss.numTracksToDownload == ss.numTracksDownloaded
-                ) {
+                if (!ss.finishedDownloadingTracks && ss.numTracksToDownload == ss.numTracksDownloaded)
+                {
                     ss.finishedDownloadingTracks = true;
                     download_track = downloaded_track;
                     downloaded_track = download_track;
                 }
 
-                if (
-                    !ss.finishedDownloadingPlaylists &&
-                    ss.numPlaylistsToDownload == ss.numPlaylistsDownloaded
-                ) {
+                if (!ss.finishedDownloadingPlaylists && ss.numPlaylistsToDownload == ss.numPlaylistsDownloaded)
+                {
                     ss.finishedDownloadingPlaylists = true;
                     downloaded_playlist = download_playlist;
                     download_playlist = downloaded_playlist;
