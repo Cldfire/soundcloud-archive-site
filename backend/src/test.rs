@@ -323,7 +323,8 @@ fn database_tables() -> Result<(), Error> {
     sc_user.create_new(&mut db_client)?;
     track1.create_new(&mut db_client, &sc_user)?;
     track2.create_new(&mut db_client, &sc_user)?;
-    playlist.create_new(&mut db_client, &sc_user, &vec![track1.clone(), track2.clone()])?;
+    // TODO: needs design improvement
+    // playlist.create_new(&mut db_client, &sc_user, &vec![track1.clone(), track2.clone()])?;
 
     let loaded_sc_user = SoundCloudUser::load_id(&mut db_client, sc_user.sc_user_id)?;
     let loaded_track1 = Track::load_id(&mut db_client, track1.track_id)?;
