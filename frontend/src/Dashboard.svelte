@@ -71,7 +71,6 @@
         } else {
             alert(await response.text());
         }
-        scraped = true;
     }
 
     async function clearLikedTracks() {
