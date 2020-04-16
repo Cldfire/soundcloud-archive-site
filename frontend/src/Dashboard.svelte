@@ -36,7 +36,7 @@
         }
     }
 
-    let download = 1;
+    let download = 2;
     let downloaded = 0;
 
     var searchstring = "";
@@ -176,8 +176,6 @@
         if (es != null) {
             es.addEventListener('update', (e) => {
                 let data = JSON.parse(e.data);
-                download = ss.numPlaylistsToDownload + ss.numTracksToDownload;
-                downloaded = ss.numPlaylistsDownloaded + ss.numPlaylistsDownloaded +1;
                 if (data.LikesScrapingEvent) {
                     let d = data.LikesScrapingEvent;
 
@@ -190,9 +188,6 @@
                         ss.numTracksDownloaded += d
                             .MoreLikesInfoDownloaded
                             .count;
-                        downloaded += d
-                                .MoreLikesInfoDownloaded
-                                .count;
                     }
                 } else if (data.PlaylistsScrapingEvent) {
                     let d = data.PlaylistsScrapingEvent;
@@ -203,7 +198,6 @@
                             .num;
                     } else if (d.FinishPlaylistInfoDownload) {
                         ss.numPlaylistsDownloaded += 1;
-                        downloaded += 1;
                     }
                 } else if (data == "Complete") {
                     getLikedTracks();
@@ -215,6 +209,7 @@
                     ss.numTracksToDownload == ss.numTracksDownloaded
                 ) {
                     ss.finishedDownloadingTracks = true;
+                    downloaded += 1;
                 }
 
                 if (
@@ -222,12 +217,11 @@
                     ss.numPlaylistsToDownload == ss.numPlaylistsDownloaded
                 ) {
                     ss.finishedDownloadingPlaylists = true;
+                    downloaded += 1;
                 }
                 document.getElementById("loading").value = ss.getstat();
             });
         }
-        downloaded = download;
-        download = downloaded
     });
 
 
