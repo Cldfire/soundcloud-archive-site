@@ -67,7 +67,9 @@
             }
         );
         if (response.ok) {
-
+            getPlayback();
+            getArtist();
+            scraped = true;
         } else {
             alert(await response.text());
         }
@@ -208,7 +210,6 @@
             alert(await response.text());
         }
     }
-    getArtist();
     // sc_user_id: sc_u.sc_user_id,
     // avatar_url: sc_u.avatar_url,
     // full_name: sc_u.full_name,
@@ -229,7 +230,6 @@
             alert(await response.text());
         }
     }
-    getPlayback();
 
 </script>
 
@@ -291,7 +291,7 @@
     <button on:click="{logOut}">Log Out</button>
     </div>
     <br>
-    <Link href="set-soundcloud-credentials">Set SoundCloud Credentials</Link>
+    <button onclick="window.location.href = 'set-soundcloud-credentials'" href="set-soundcloud-credentials">Set SoundCloud Credentials</button>
     <br>
     <button on:click="{startScraping}">Scrape SoundCloud</button>
     <small class="mb-3" id="loading">Track: {Math.floor((downloaded_track / download_track) * 100.0)}%</small>
